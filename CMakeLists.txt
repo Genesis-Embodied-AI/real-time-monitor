@@ -12,5 +12,7 @@ include(flags)
 # Enable ctest
 enable_testing()
 
-add_subdirectory(probe)
+add_subdirectory(lib)
 add_subdirectory(monitor)
+add_subdirectory(tools)
+
