@@ -143,9 +143,6 @@ namespace rtm
 
     std::vector<Parser::Point> Parser::generate_times_diff() const
     {
-        using seconds_f = std::chrono::duration<float>;
-        using milliseconds_f = std::chrono::duration<float, std::milli>;
-
         std::vector<Point> serie;
         serie.reserve(samples_.size() / 2);
 
@@ -161,16 +158,13 @@ namespace rtm
 
     std::vector<Parser::Point> Parser::generate_times_up() const
     {
-        using seconds_f = std::chrono::duration<float>;
-        using milliseconds_f = std::chrono::duration<float, std::milli>;
-
         std::vector<Point> serie;
         serie.reserve(samples_.size() / 2);
 
-        for (std::size_t i = 2; i < samples_.size(); i += 2)
+        for (std::size_t i = 1; i < samples_.size(); i += 2)
         {
-            seconds_f x = samples_[i - 2];
-            milliseconds_f y = samples_[i - 1] - samples_[i - 2];
+            seconds_f x = samples_[i - 1];
+            milliseconds_f y = samples_[i] - samples_[i - 1];
             serie.push_back({x.count(), y.count()});
         }
 
@@ -200,8 +194,8 @@ namespace rtm
         {
             uint32_t end = std::min(i + bucket_size, n);
 
-            double minY = std::numeric_limits<double>::infinity();
-            double maxY = -std::numeric_limits<double>::infinity();
+            float minY = std::numeric_limits<float>::infinity();
+            float maxY = -std::numeric_limits<float>::infinity();
             Parser::Point minP, maxP;
 
             for (uint32_t j = i; j < end; ++j)
@@ -229,9 +223,9 @@ namespace rtm
 
 
     // Helper function to calculate triangle area using three points
-    inline double calculate_triangle_area(Parser::Point const& a,
-                                          Parser::Point const& b,
-                                          Parser::Point const& c)
+    inline float calculate_triangle_area(Parser::Point const& a,
+                                         Parser::Point const& b,
+                                         Parser::Point const& c)
     {
         return std::abs((a.x - c.x) * (b.y - a.y) - (a.x - b.x) * (c.y - a.y)) * 0.5;
     }
@@ -258,7 +252,7 @@ namespace rtm
         sampled.push_back(serie.front());
 
         // Bucket size (excluding first and last points)
-        double const bucket_size = static_cast<double>(n - 2) / (threshold - 2);
+        float const bucket_size = static_cast<float>(n - 2) / (threshold - 2);
 
         uint32_t a = 0; // Initially point A is the first point
 
@@ -269,7 +263,7 @@ namespace rtm
             uint32_t const bucket_end   = static_cast<uint32_t>(std::floor((i + 1) * bucket_size)) + 1;
 
             // Calculate average point for next bucket (used as point C)
-            double avg_x = 0.0, avg_y = 0.0;
+            float avg_x = 0.0, avg_y = 0.0;
             uint32_t avg_range_start, avg_range_end;
 
             if (i < threshold - 3)
@@ -287,7 +281,7 @@ namespace rtm
 
             // Calculate average
             avg_range_end = std::min(avg_range_end, n);
-            uint32_t const avg_range_length = avg_range_end - avg_range_start;
+            float const avg_range_length = static_cast<float>(avg_range_end - avg_range_start);
 
             for (uint32_t j = avg_range_start; j < avg_range_end; ++j)
             {
@@ -301,13 +295,13 @@ namespace rtm
 
             // Find point in current bucket with largest triangle area
             uint32_t max_area_point = bucket_start;
-            double max_area = -1.0;
+            float max_area = -1.0;
 
             uint32_t const actual_bucket_end = std::min(bucket_end, n);
 
             for (uint32_t j = bucket_start; j < actual_bucket_end; ++j)
             {
-                double const area = calculate_triangle_area(serie[a], serie[j], avg_point);
+                float const area = calculate_triangle_area(serie[a], serie[j], avg_point);
 
                 if (area > max_area)
                 {

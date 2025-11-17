@@ -12,7 +12,15 @@ include(flags)
 # Enable ctest
 enable_testing()
 
-add_subdirectory(lib)
-add_subdirectory(monitor)
-add_subdirectory(tools)
+option(BUILD_TOOLS      "Build tools" ON)
+option(BUILD_MONITOR    "Build monitor" ON)
 
+add_subdirectory(lib)
+
+if (BUILD_MONITOR)
+    add_subdirectory(monitor)
+endif()
+
+if (BUILD_TOOLS)
+    add_subdirectory(tools)
+endif()

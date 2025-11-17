@@ -2,8 +2,9 @@
 #define RTM_MONITOR_SERIE_H
 
 #include <imgui.h>
+#include <unordered_map>
 
-#include "parser.h"
+#include "rtm/parser.h"
 
 namespace rtm
 {
@@ -13,21 +14,28 @@ namespace rtm
     class Serie
     {
     public:
-        Serie(Parser const& parser);
+        Serie(TickHeader const& header, std::vector<Parser::Point>&& raw_serie, ImVec4 color);
         ~Serie() = default;
 
-        bool plot_diffs() const;
-        bool plot_ups() const;
+        bool plot() const;
 
     private:
+        static constexpr seconds_f SECTION_SIZE = 2min;
+        struct Section
+        {
+            seconds_f min;
+            seconds_f max;
+            std::vector<Parser::Point> points;
+        };
+        void split_serie(std::vector<Section>& sections, std::vector<Parser::Point> const& flat);
+
         ImVec4 color_;
 
         std::string name_;
-        std::vector<Parser::Point> diffs_full_;
-        std::vector<Parser::Point> ups_full_;
 
-        std::vector<Parser::Point> diffs_downsampled_;
-        std::vector<Parser::Point> ups_downsampled_;
+        std::vector<Section> sections_;
+        std::vector<Parser::Point> serie_;
+        bool is_downsampled_;
     };
 }
 
