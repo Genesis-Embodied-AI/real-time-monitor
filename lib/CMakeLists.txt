@@ -1,13 +1,12 @@
-set(PROBE_SRCS
+set(LIB_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/error.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/io.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/parser.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/probe.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/serializer.cc)
 
-add_library(rtm_probe ${PROBE_SRCS})
-target_include_directories(rtm_probe PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-set_target_properties(rtm_probe PROPERTIES
+add_library(rtm ${LIB_SRCS})
+target_include_directories(rtm PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set_target_properties(rtm PROPERTIES
     POSITION_INDEPENDENT_CODE ON
 )
-
-add_subdirectory(generator)

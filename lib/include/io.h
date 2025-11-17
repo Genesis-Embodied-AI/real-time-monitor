@@ -9,6 +9,8 @@ namespace rtm
     class AbstractWriteIO
     {
     public:
+        virtual ~AbstractWriteIO() = default;
+
         virtual void write(void const* data, std::size_t data_size) = 0;
         virtual void seek(std::size_t pos) = 0;
     };
@@ -16,6 +18,8 @@ namespace rtm
     class AbstractReadIO
     {
     public:
+        virtual ~AbstractReadIO() = default;
+
         virtual int64_t read(void* data, std::size_t data_size) = 0;
         virtual void seek(std::size_t pos) = 0;
     };

@@ -52,12 +52,10 @@ namespace rtm
 
         // Align the data section on 8 bytes boundaries
         data_offset = header_buffer.size();
-        printf("before alignement: %ld\n", data_offset);
         if (data_offset % 8)
         {
             data_offset += (8 - data_offset % 8);
         }
-        printf("after alignement: %ld\n", data_offset);
         header_buffer.resize(data_offset);
 
         // write back data offset
@@ -112,7 +110,6 @@ namespace rtm
         nanoseconds relative_timestamp = timestamp - last_reference_;
         if (relative_timestamp > MAX_WINDOW)
         {
-            printf("rollout %ld > %ld (%ld)\n", relative_timestamp.count(), MAX_WINDOW.count(), last_reference_.count());
             update_reference(timestamp);
             return;
         }

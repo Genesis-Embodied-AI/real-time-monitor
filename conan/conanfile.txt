@@ -1,11 +1,6 @@
 [requires]
 gtest/1.17.0
 imgui/1.92.4
-glfw/3.4
 
 [generators]
 CMakeDeps
-
-[options]
-glfw*:with_x11=True
-glfw*:with_wayland=True

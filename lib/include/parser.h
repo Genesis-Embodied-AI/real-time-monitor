@@ -5,6 +5,7 @@
 #include <chrono>
 #include <string>
 
+#include "error.h"
 #include "io.h"
 #include "commands.h"
 
@@ -30,13 +31,23 @@ namespace rtm
         ~Parser() = default;
 
         void load_header();
-        void load_samples(nanoseconds begin = 0ns, nanoseconds end = 0ns);
+
+        // TODO: support begin/end
+        // if end = 0, takes alls samples
+        // if begin/end is negative, reference is end, otherwise it is begin (relative)
+        void load_samples();
 
         TickHeader const& header() const                { return header_;    }
-        nanoseconds begin() const                       { return begin_;     }
-        nanoseconds end() const                         { return end_;       }
         std::vector<nanoseconds>& samples()             { return samples_;   }
         std::vector<nanoseconds> const& samples() const { return samples_;   }
+
+        struct Point
+        {
+            double x;
+            double y;
+        };
+        std::vector<Point> generate_times_diff() const;
+        std::vector<Point> generate_times_up() const;
 
     private:
         std::unique_ptr<AbstractReadIO> io_;
@@ -46,6 +57,17 @@ namespace rtm
         nanoseconds end_;
         std::vector<nanoseconds> samples_;
     };
+
+    // Helper to downsample big series
+    // First pass with min/max to decimate a bit
+    // Second pass with LTTB
+    result<std::vector<Parser::Point>> minmax_lttb(const std::vector<Parser::Point>& series, uint32_t threshold);
+
+    // LTTB downsampler
+    result<std::vector<Parser::Point>> lttb(std::vector<Parser::Point> const& s, uint32_t threshold);
+
+    // Min/Max downsampler
+    result<std::vector<Parser::Point>> minmax_downsampler(std::vector<Parser::Point> const& series, uint32_t threshold);
 }
 
 #endif
