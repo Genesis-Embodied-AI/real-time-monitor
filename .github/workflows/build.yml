@@ -1,0 +1,39 @@
+name: PR build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build_x86:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        build_type: [Debug, Release]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: conan-io/setup-conan@v1.1.0
+      with:
+        cache_packages: true
+
+    - name: Install OS dependencies
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y libglfw3-dev
+
+    - name: Setup build env
+      run: |
+        ./setup_build.sh ${{github.workspace}}/build
+
+    - name: Configure CMake
+      run: |
+        cmake -B build -DCMAKE_TOOLCHAIN_FILE=${{github.workspace}}/build/toolchain.cmake -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+
+    - name: Build
+      run: |
+        cmake --build build
