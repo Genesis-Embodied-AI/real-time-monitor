@@ -1,20 +1,17 @@
-#ifndef RTM_PROBE_PARSER_H
-#define RTM_PROBE_PARSER_H
+#ifndef RTM_LIB_PARSER_H
+#define RTM_LIB_PARSER_H
 
 #include <array>
 #include <chrono>
 #include <string>
 
+#include "rtm/time_wrapper.h"
 #include "rtm/error.h"
 #include "rtm/io.h"
 #include "rtm/commands.h"
 
 namespace rtm
 {
-    using namespace std::chrono;
-    using milliseconds_f = std::chrono::duration<float, std::milli>;
-    using seconds_f = std::chrono::duration<float>;
-
     struct TickHeader
     {
         uint16_t version;

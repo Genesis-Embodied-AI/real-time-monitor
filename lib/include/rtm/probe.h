@@ -1,5 +1,5 @@
-#ifndef RTM_PROBE_PROBE_H
-#define RTM_PROBE_PROBE_H
+#ifndef RTM_LIB_PROBE_H
+#define RTM_LIB_PROBE_H
 
 #include <chrono>
 #include <cstdint>
@@ -9,11 +9,10 @@
 #include <vector>
 
 #include "rtm/io.h"
+#include "rtm/time_wrapper.h"
 
 namespace rtm
 {
-    using namespace std::chrono;
-
     class Probe
     {
     public:
@@ -26,7 +25,7 @@ namespace rtm
 
         void update_priority(uint32_t priority);
         void update_period(nanoseconds period);
-        void log(nanoseconds timestamp);
+        void log(nanoseconds timestamp = since_epoch());
         void flush();
 
     private:

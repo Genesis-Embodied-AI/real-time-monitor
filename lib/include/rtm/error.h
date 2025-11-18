@@ -1,5 +1,5 @@
-#ifndef RTM_ERROR_H
-#define RTM_ERROR_H
+#ifndef RTM_LIB_ERROR_H
+#define RTM_LIB_ERROR_H
 
 #include <expected>
 #include <system_error>
