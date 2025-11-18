@@ -16,9 +16,19 @@ namespace rtm
                     Parser p{std::move(io)};
                     p.load_header();
                     p.load_samples();
+                    auto color = generate_random_color();
 
-                    Serie s{p};
-                    series_.emplace_back(std::move(s));
+                    {
+                        // diff times
+                        Serie s{p.header(), p.generate_times_diff(), color};
+                        diffs_.emplace_back(std::move(s));
+                    }
+
+                    {
+                        // up times
+                        Serie s{p.header(), p.generate_times_up(), color};
+                        ups_.emplace_back(std::move(s));
+                    }
                 }
             }
         }
@@ -34,18 +44,15 @@ namespace rtm
 
         if (ImGui::BeginTabBar("GraphsTabBar"))
         {
-            draw_graphs("Times Diff", request_fit,
-                        [](const Serie& serie) { return serie.plot_diffs(); });
+            draw_graphs("Times Diff", request_fit, diffs_);
 
-            draw_graphs("Times Up", request_fit,
-                        [](const Serie& serie) { return serie.plot_ups(); });
+            draw_graphs("Times Up", request_fit, ups_);
 
             ImGui::EndTabBar();
         }
     }
 
-    void Plot::draw_graphs(char const* tab_name, bool request_fit,
-                           std::function<bool(const Serie&)> plot_func)
+    void Plot::draw_graphs(char const* tab_name, bool request_fit, std::vector<Serie> const& series)
     {
         if (request_fit)
         {
@@ -56,15 +63,16 @@ namespace rtm
         {
             // Plot area
             ImGui::BeginChild("PlotRegion", ImVec2(0, -28), true,
-                            ImGuiWindowFlags_NoScrollbar |
-                            ImGuiWindowFlags_NoScrollWithMouse);
+                              ImGuiWindowFlags_NoScrollbar |
+                              ImGuiWindowFlags_NoScrollWithMouse);
 
             bool is_downsampled = false;
             if (ImPlot::BeginPlot("##Plot", ImVec2(-1, -1), ImPlotFlags_Crosshairs))
             {
-                for (auto const& serie : series_)
+                ImPlot::SetupAxes("t (s)", "t (ms)");
+                for (auto const& serie : series)
                 {
-                    is_downsampled |= plot_func(serie);
+                    is_downsampled |= serie.plot();
                 }
                 ImPlot::EndPlot();
             }

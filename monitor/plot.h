@@ -16,11 +16,11 @@ namespace rtm
         void draw();
 
     private:
-        void draw_graphs(char const* tab_name, bool request_fit,
-                         std::function<bool(const Serie&)> plot_func);
+        void draw_graphs(char const* tab_name, bool request_fit, std::vector<Serie> const& series);
         void draw_status_bar(bool is_downsampled);
 
-        std::vector<Serie> series_;
+        std::vector<Serie> diffs_;
+        std::vector<Serie> ups_;
     };
 }
 

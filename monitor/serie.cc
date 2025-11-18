@@ -38,87 +38,130 @@ namespace rtm
     }
 
 
-    Serie::Serie(Parser const& parser)
+    void Serie::split_serie(std::vector<Section>& sections, std::vector<Parser::Point> const& flat)
     {
-        diffs_full_  = parser.generate_times_diff();
-        ups_full_    = parser.generate_times_up();
+        Section section;
+        seconds_f min = 0min;
+        seconds_f max = SECTION_SIZE;
+        for (auto const& point : flat)
+        {
+            if (point.x < max.count())
+            {
+                section.points.push_back(point);
+            }
+            else
+            {
+                section.min = min;
+                section.max = max;
+                sections.emplace_back(std::move(section));
 
+                min += SECTION_SIZE;
+                max += SECTION_SIZE;
+            }
+        }
+    }
+
+
+    Serie::Serie(TickHeader const& header, std::vector<Parser::Point>&& raw_serie, ImVec4 color)
+    {
         using namespace std::chrono;
         auto  since_epoch = []()
         {
             auto now = time_point_cast<nanoseconds>(system_clock::now());
             return now.time_since_epoch();
         };
-        using milliseconds_f = std::chrono::duration<float, std::milli>;
 
         constexpr uint32_t DECIMATION = 300'000; // 5min @ 1ms
 
         nanoseconds t1 =since_epoch();
+
+        split_serie(sections_, raw_serie);
+
         //auto rc_diffs = minmax_downsampler(diffs_full_, DECIMATION);
-        auto rc_diffs = lttb(diffs_full_, DECIMATION);
+        auto rc_downampled = lttb(raw_serie, DECIMATION);
         //auto rc_diffs = minmax_lttb(diffs_full_, DECIMATION);
-        if (rc_diffs)
+        if (rc_downampled)
         {
-            diffs_downsampled_ = *rc_diffs;
+            serie_ = *rc_downampled;
+        }
+        if (serie_.size() != raw_serie.size())
+        {
+            is_downsampled_ = true;
         }
 
-        //auto rc_ups = minmax_downsampler(ups_full_, DECIMATION);
-        auto rc_ups = lttb(ups_full_, DECIMATION);
-        //auto rc_ups = minmax_lttb(ups_full_, DECIMATION);
-        if (rc_ups)
-        {
-            ups_downsampled_ = *rc_ups;
-        }
         nanoseconds t2 = since_epoch();
-        printf("loaded in %f ms (%ld)\n", duration_cast<milliseconds_f>(t2 - t1).count(), diffs_downsampled_.size());
+        printf("loaded in %f ms (%ld)\n", duration_cast<milliseconds_f>(t2 - t1).count(), serie_.size());
 
-        name_ = parser.header().process;
+        name_ = header.process;
         name_ += '.';
-        name_ += parser.header().name;
+        name_ += header.name;
         name_ += " (";
-        name_ += format_iso_timestamp(parser.header().start_time);
+        name_ += format_iso_timestamp(header.start_time);
         name_ += ')';
 
-        color_  = generate_random_color();
+        color_  = color;
     }
 
-    bool Serie::plot_diffs() const
+    bool Serie::plot() const
     {
+        if (serie_.empty())
+        {
+            //TODO: Display something to say its empty?
+            return false;
+        }
+
         ImPlot::SetNextLineStyle(color_);
 
-        auto limits = ImPlot::GetPlotLimits();
-        if (limits.X.Size() < 10.0)
+        if (not is_downsampled_)
         {
-            ImPlot::PlotLine(name_.c_str(), &diffs_full_.at(0).x, &diffs_full_.at(0).y, static_cast<int>(diffs_full_.size()),
+            // skip smart display: the serie is small enough
+            ImPlot::PlotLine(name_.c_str(), &serie_.at(0).x, &serie_.at(0).y, static_cast<int>(serie_.size()),
                 0, 0, sizeof(Parser::Point));
+            return is_downsampled_;
+        }
+
+        auto limits = ImPlot::GetPlotLimits();
+        if (limits.X.Size() < SECTION_SIZE.count())
+        {
+            auto it = std::find_if(sections_.begin(), sections_.end(), [&](Section const& s)
+            {
+                return (s.min.count() >  limits.X.Min) and (s.max.count() >= limits.X.Max);
+            });
+            if (it == sections_.end())
+            {
+                // out of scope: show full serie
+                ImPlot::PlotLine(name_.c_str(), &serie_.at(0).x, &serie_.at(0).y, static_cast<int>(serie_.size()),
+                    0, 0, sizeof(Parser::Point));
+                return is_downsampled_;
+            }
+
+            // display 3 sections (before, here and after if possible)
+            if (it != sections_.begin())
+            {
+                it--;
+            }
+
+            for (int i = 0; i < 3; ++i)
+            {
+                Parser::Point const* data = it->points.data();
+                ImPlot::PlotLine(name_.c_str(), &data->x, &data->y, static_cast<int>(it->points.size()),
+                    0, 0, sizeof(Parser::Point));
+
+                it++;
+                if (it == sections_.end())
+                {
+                    break;
+                }
+            }
+
             return false;
         }
         else
         {
-            ImPlot::PlotLine(name_.c_str(), &diffs_downsampled_.at(0).x, &diffs_downsampled_.at(0).y, static_cast<int>(diffs_downsampled_.size()),
-            0, 0, sizeof(Parser::Point));
-            return diffs_full_.size() != diffs_downsampled_.size();
-        }
-    }
-
-    bool Serie::plot_ups() const
-    {
-        ImPlot::SetNextLineStyle(color_);
-
-        auto limits = ImPlot::GetPlotLimits();
-        if (limits.X.Size() < 10.0)
-        {
-            ImPlot::PlotLine(name_.c_str(), &ups_full_.at(0).x, &ups_full_.at(0).y, static_cast<int>(ups_full_.size()),
+            // downsampled
+            ImPlot::PlotLine(name_.c_str(), &serie_.at(0).x, &serie_.at(0).y, static_cast<int>(serie_.size()),
                 0, 0, sizeof(Parser::Point));
-            return false;
-        }
-        else
-        {
-            ImPlot::PlotLine(name_.c_str(), &ups_downsampled_.at(0).x, &ups_downsampled_.at(0).y, static_cast<int>(ups_downsampled_.size()),
-                0, 0, sizeof(Parser::Point));
-
-            printf("why? %ld %ld\n", ups_full_.size(), ups_downsampled_.size());
-            return ups_full_.size() != ups_downsampled_.size();
+            return is_downsampled_;
         }
     }
 }

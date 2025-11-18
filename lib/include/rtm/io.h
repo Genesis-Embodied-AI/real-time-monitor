@@ -51,6 +51,17 @@ namespace rtm
     private:
         std::ifstream ifs_;
     };
-};
+
+    // Write nothing
+    class NullWrite final : public AbstractWriteIO
+    {
+    public:
+        NullWrite() = default;
+        virtual ~NullWrite() = default;
+
+        void write(void const*, std::size_t) override {}
+        void seek(std::size_t) override {}
+    };
+}
 
 #endif
