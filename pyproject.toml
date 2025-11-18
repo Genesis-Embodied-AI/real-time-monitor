@@ -3,7 +3,7 @@ requires = ["scikit-build-core>=0.5.0", "nanobind>=1.3.2", "conan"]
 build-backend = "scikit_build_core.build"
 
 [project]
-name = "rtm"
+name = "real-time-monitor"
 version = "0.0.0"
 description = "A probe and a moonitor to investigate your application real time behavior."
 readme = {file = "README.md", content-type = "text/markdown"}
