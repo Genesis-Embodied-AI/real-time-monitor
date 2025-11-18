@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
 
 jobs:
   build-wheels:
@@ -35,8 +36,8 @@ jobs:
     needs: build-wheels
     if: startsWith(github.ref, 'refs/tags/')   # Only run on tag pushes
     runs-on: ubuntu-24.04
-    permissions:
-      id-token: write
+    environment:
+      name: maintainer
     steps:
       - uses: actions/checkout@v4
 
