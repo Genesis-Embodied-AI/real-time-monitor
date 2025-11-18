@@ -1,5 +1,5 @@
-#ifndef RTM_PROBE_COMMANDS_H
-#define RTM_PROBE_COMMANDS_H
+#ifndef RTM_LIB_COMMANDS_H
+#define RTM_LIB_COMMANDS_H
 
 #include <cstdint>
 

@@ -1,5 +1,5 @@
-#ifndef RTM_PROBE_SERIALIZER_H
-#define RTM_PROBE_SERIALIZER_H
+#ifndef RTM_LIB_SERIALIZER_H
+#define RTM_LIB_SERIALIZER_H
 
 #include <concepts>
 #include <cstdint>

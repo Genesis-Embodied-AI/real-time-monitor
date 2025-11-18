@@ -1,5 +1,5 @@
-#ifndef RTM_PROBE_IO_H
-#define RTM_PROBE_IO_H
+#ifndef RTM_LIB_IO_H
+#define RTM_LIB_IO_H
 
 #include <cstdint>
 #include <fstream>
