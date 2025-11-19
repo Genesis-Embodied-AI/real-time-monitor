@@ -10,7 +10,7 @@ required_conan_version = ">=2.10"
 
 
 class RealTimeMonitorRecipe(ConanFile):
-    name = "rtm"
+    name = "real-time-monitor"
     version = "0.1.0"
     url = "https://github.com/Genesis-Embodied-AI/real-time-monitor"
     homepage = "https://github.com/Genesis-Embodied-AI/real-time-monitor"

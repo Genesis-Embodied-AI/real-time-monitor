@@ -137,11 +137,13 @@ namespace rtm
             }
         }
 
+        begin_ = samples_.front();
+        end_   = samples_.back();
         printf("whole size: %ld\n", samples_.size());
     }
 
 
-    std::vector<Parser::Point> Parser::generate_times_diff() const
+    std::vector<Parser::Point> Parser::generate_times_diff()
     {
         std::vector<Point> serie;
         serie.reserve(samples_.size() / 2);
@@ -150,13 +152,14 @@ namespace rtm
         {
             seconds_f x = samples_[i];
             milliseconds_f y = samples_[i] - samples_[i - 2];
+            diff_max_ = std::max(diff_max_, y);
             serie.push_back({x.count(), y.count()});
         }
 
         return serie;
     }
 
-    std::vector<Parser::Point> Parser::generate_times_up() const
+    std::vector<Parser::Point> Parser::generate_times_up()
     {
         std::vector<Point> serie;
         serie.reserve(samples_.size() / 2);
@@ -165,12 +168,32 @@ namespace rtm
         {
             seconds_f x = samples_[i - 1];
             milliseconds_f y = samples_[i] - samples_[i - 1];
+            up_max_ = std::max(up_max_, y);
             serie.push_back({x.count(), y.count()});
         }
 
         return serie;
     }
 
+    nanoseconds Parser::begin() const
+    {
+        return begin_;
+    }
+
+    nanoseconds Parser::end() const
+    {
+        return end_;
+    }
+
+    milliseconds_f Parser::diff_max() const
+    {
+        return diff_max_;
+    }
+
+    milliseconds_f Parser::up_max() const
+    {
+        return up_max_;
+    }
 
     result<std::vector<Parser::Point>> minmax_downsampler(std::vector<Parser::Point> const& series, uint32_t threshold)
     {
@@ -227,7 +250,7 @@ namespace rtm
                                          Parser::Point const& b,
                                          Parser::Point const& c)
     {
-        return std::abs((a.x - c.x) * (b.y - a.y) - (a.x - b.x) * (c.y - a.y)) * 0.5;
+        return std::abs((a.x - c.x) * (b.y - a.y) - (a.x - b.x) * (c.y - a.y)) * 0.5f;
     }
 
     result<std::vector<Parser::Point>> lttb(std::vector<Parser::Point> const& serie, uint32_t threshold)
@@ -252,15 +275,15 @@ namespace rtm
         sampled.push_back(serie.front());
 
         // Bucket size (excluding first and last points)
-        float const bucket_size = static_cast<float>(n - 2) / (threshold - 2);
+        float const bucket_size = static_cast<float>(n - 2) / float(threshold - 2);
 
         uint32_t a = 0; // Initially point A is the first point
 
         for (uint32_t i = 0; i < threshold - 2; ++i)
         {
             // Calculate bucket range for current bucket
-            uint32_t const bucket_start = static_cast<uint32_t>(std::floor((i + 0) * bucket_size)) + 1;
-            uint32_t const bucket_end   = static_cast<uint32_t>(std::floor((i + 1) * bucket_size)) + 1;
+            uint32_t const bucket_start = static_cast<uint32_t>(std::floor(float(i + 0) * bucket_size)) + 1;
+            uint32_t const bucket_end   = static_cast<uint32_t>(std::floor(float(i + 1) * bucket_size)) + 1;
 
             // Calculate average point for next bucket (used as point C)
             float avg_x = 0.0, avg_y = 0.0;
@@ -269,8 +292,8 @@ namespace rtm
             if (i < threshold - 3)
             {
                 // Not the last bucket
-                avg_range_start = static_cast<uint32_t>(std::floor((i + 1) * bucket_size)) + 1;
-                avg_range_end   = static_cast<uint32_t>(std::floor((i + 2) * bucket_size)) + 1;
+                avg_range_start = static_cast<uint32_t>(std::floor(float(i + 1) * bucket_size)) + 1;
+                avg_range_end   = static_cast<uint32_t>(std::floor(float(i + 2) * bucket_size)) + 1;
             }
             else
             {

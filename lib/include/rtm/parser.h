@@ -44,15 +44,23 @@ namespace rtm
             float x;
             float y;
         };
-        std::vector<Point> generate_times_diff() const;
-        std::vector<Point> generate_times_up() const;
+        std::vector<Point> generate_times_diff();
+        std::vector<Point> generate_times_up();
+
+        nanoseconds begin() const;          // only available after a call to load_samples()
+        nanoseconds end() const;            // only available after a call to load_samples()
+
+        milliseconds_f diff_max() const ;   // only available after a call to generate_times_diff
+        milliseconds_f up_max() const;      // only available after a call to generate_times_up
 
     private:
         std::unique_ptr<AbstractReadIO> io_;
 
         TickHeader header_;
-        nanoseconds begin_;
-        nanoseconds end_;
+        nanoseconds begin_{-1ns};
+        nanoseconds end_{-1ns};
+        milliseconds_f diff_max_{-1ns};
+        milliseconds_f up_max_{-1ns};
         std::vector<nanoseconds> samples_;
     };
 
