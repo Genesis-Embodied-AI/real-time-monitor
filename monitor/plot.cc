@@ -6,30 +6,42 @@ namespace rtm
 {
     void Plot::load_dataset(std::filesystem::path const& folder)
     {
+        std::vector<std::string> detected_files;
         for (auto const& entry : std::filesystem::directory_iterator(folder))
         {
             if (entry.is_regular_file())
             {
                 if (entry.path().extension() == ".tick")
                 {
-                    auto io = std::make_unique<rtm::FileRead>(entry.path().string().c_str());
-                    Parser p{std::move(io)};
-                    p.load_header();
-                    p.load_samples();
-                    auto color = generate_random_color();
-
-                    {
-                        // diff times
-                        Serie s{p.header(), p.generate_times_diff(), color};
-                        diffs_.emplace_back(std::move(s));
-                    }
-
-                    {
-                        // up times
-                        Serie s{p.header(), p.generate_times_up(), color};
-                        ups_.emplace_back(std::move(s));
-                    }
+                    detected_files.push_back(entry.path().string());
                 }
+            }
+        }
+        std::sort(detected_files.begin(), detected_files.end());
+
+        for (auto const& entry : detected_files)
+        {
+            auto io = std::make_unique<rtm::FileRead>(entry.c_str());
+            Parser p{std::move(io)};
+            p.load_header();
+            p.load_samples();
+            auto color = generate_random_color();
+
+            // determine the end of the whole graph
+            end_ = std::max(end_, p.end());
+
+            {
+                // diff times
+                Serie s{p.header(), p.generate_times_diff(), color};
+                diffs_.emplace_back(std::move(s));
+                diff_max_ = std::max(diff_max_, p.diff_max());
+            }
+
+            {
+                // up times
+                Serie s{p.header(), p.generate_times_up(), color};
+                ups_.emplace_back(std::move(s));
+                up_max_ = std::max(up_max_, p.up_max());
             }
         }
     }
@@ -44,23 +56,31 @@ namespace rtm
 
         if (ImGui::BeginTabBar("GraphsTabBar"))
         {
-            draw_graphs("Times Diff", request_fit, diffs_);
+            draw_graphs("Times Diff", "jitter (ms)", diff_max_.count(), request_fit, diffs_);
 
-            draw_graphs("Times Up", request_fit, ups_);
+            draw_graphs("Times Up", "up time (ms)", up_max_.count(), request_fit, ups_);
 
             ImGui::EndTabBar();
         }
     }
 
-    void Plot::draw_graphs(char const* tab_name, bool request_fit, std::vector<Serie> const& series)
+    void Plot::draw_graphs(char const* tab_name, char const* legend, float max_y, bool request_fit, std::vector<Serie> const& series)
     {
-        if (request_fit)
-        {
-            ImPlot::SetNextAxesToFit();
-        }
-
         if (ImGui::BeginTabItem(tab_name))
         {
+            // Force a start with the full view
+            ImPlot::SetNextAxesLimits(0, seconds_f(end_).count(),
+                                    0, max_y,
+                                    ImPlotCond_Once);
+
+            if (request_fit)
+            {
+                ImPlot::SetNextAxesLimits(0, seconds_f(end_).count(),
+                                        0, max_y,
+                                        ImPlotCond_Always);
+
+            }
+
             // Plot area
             ImGui::BeginChild("PlotRegion", ImVec2(0, -28), true,
                               ImGuiWindowFlags_NoScrollbar |
@@ -69,7 +89,7 @@ namespace rtm
             bool is_downsampled = false;
             if (ImPlot::BeginPlot("##Plot", ImVec2(-1, -1), ImPlotFlags_Crosshairs))
             {
-                ImPlot::SetupAxes("t (s)", "t (ms)");
+                ImPlot::SetupAxes("time (s)", legend);
                 for (auto const& serie : series)
                 {
                     is_downsampled |= serie.plot();
