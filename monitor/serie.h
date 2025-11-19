@@ -11,6 +11,15 @@ namespace rtm
     ImVec4 generate_random_color();
     std::string format_iso_timestamp(nanoseconds timestamp);
 
+    struct Statistics
+    {
+        float min;
+        float max;
+        float average;
+        float rms;
+        float standard_deviation;
+    };
+
     class Serie
     {
     public:
@@ -18,6 +27,9 @@ namespace rtm
         ~Serie() = default;
 
         bool plot() const;
+
+        std::string const& name() const { return name_; }
+        Statistics compute_statistics(double begin, double end) const;
 
     private:
         static constexpr seconds_f SECTION_SIZE = 2min;

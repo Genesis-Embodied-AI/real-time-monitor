@@ -64,16 +64,9 @@ namespace rtm
 
     Serie::Serie(TickHeader const& header, std::vector<Parser::Point>&& raw_serie, ImVec4 color)
     {
-        using namespace std::chrono;
-        auto  since_epoch = []()
-        {
-            auto now = time_point_cast<nanoseconds>(system_clock::now());
-            return now.time_since_epoch();
-        };
+        constexpr uint32_t DECIMATION = 200'000;
 
-        constexpr uint32_t DECIMATION = 300'000; // 5min @ 1ms
-
-        nanoseconds t1 =since_epoch();
+        nanoseconds t1 = since_epoch();
 
         split_serie(sections_, raw_serie);
 
@@ -163,5 +156,119 @@ namespace rtm
                 0, 0, sizeof(Parser::Point));
             return is_downsampled_;
         }
+    }
+
+
+    Statistics Serie::compute_statistics(double begin, double end) const
+    {
+        // Search first and last section to process
+        auto it_first = std::find_if(sections_.begin(), sections_.end(), [&](Section const& s)
+        {
+            return (s.min.count() <= begin) and (begin < s.max.count());
+        });
+
+        auto it_last = std::find_if(sections_.begin(), sections_.end(), [&](Section const& s)
+        {
+            return (s.min.count() <= end) and (end < s.max.count());
+        });
+
+        //
+        if (it_first == sections_.end())
+        {
+            if (begin < sections_.front().min.count())
+            {
+                it_first = sections_.begin();
+            }
+            else
+            {
+                return Statistics{};
+            }
+        }
+
+        if (it_last == sections_.end())
+        {
+            if (end > sections_.back().max.count())
+            {
+                it_last = sections_.end() - 1;
+            }
+            else
+            {
+                return Statistics{};
+            }
+        }
+
+        auto const& first_section = it_first->points;
+        auto const& last_section  = it_last->points;
+
+        // first section
+        // -> search for the begining
+        auto first_point = std::find_if(first_section.begin(), first_section.end(), [&](Parser::Point const& p)
+        {
+            return (begin <= p.x);
+        });
+        if (first_point == first_section.end())
+        {
+            first_point = first_section.begin();
+        }
+
+        // last section
+        // -> search for the end
+        auto last_point = std::find_if(last_section.begin(), last_section.end(), [&](Parser::Point const& p)
+        {
+            return (end <= p.x);
+        });
+        if (last_point == last_section.end())
+        {
+            last_point = last_section.end() - 1;
+        }
+
+        Statistics stats;
+
+        int range_size = 0;
+        float accumulated = 0;
+        float square_accumulated = 0;
+        stats.min = first_section.front().y;
+        stats.max = first_section.front().y;
+
+        auto compute_section = [&](std::vector<Parser::Point>::const_iterator section_begin, std::vector<Parser::Point>::const_iterator section_end)
+        {
+            for (auto it = section_begin; it != section_end; ++it)
+            {
+                stats.min = std::min(stats.min, it->y);
+                stats.max = std::max(stats.max, it->y);
+                accumulated += it->y;
+                square_accumulated += (it->y * it->y);
+                ++range_size;
+            }
+        };
+
+        auto finalize = [&]()
+        {
+            stats.average = accumulated / range_size;
+            stats.rms = std::sqrt(square_accumulated / range_size);
+            stats.standard_deviation = std::sqrt((square_accumulated / range_size) - stats.average * stats.average);
+            return stats;
+        };
+
+        if (it_first == it_last)
+        {
+            // only one section
+            compute_section(first_point, last_point);
+            return finalize();
+        }
+
+        // first section (partial)
+        compute_section(first_point, first_section.end());
+
+        // middle section(s) (full)
+        for (auto it_section = it_first + 1; it_section != it_last; ++it_section)
+        {
+            compute_section(it_section->points.begin(), it_section->points.end());
+        }
+
+        // last section (partial)
+        compute_section(last_section.begin(), last_point);
+
+        return finalize();
     }
 }

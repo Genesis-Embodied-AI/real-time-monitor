@@ -16,6 +16,7 @@ target_compile_options(implot PRIVATE -Wno-conversion -Wno-cast-qual)
 
 set(MONITOR_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/main.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/main_window.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/plot.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/serie.cc
     )
