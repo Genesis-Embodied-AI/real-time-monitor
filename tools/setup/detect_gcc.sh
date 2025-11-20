@@ -2,17 +2,10 @@
 
 echo "Scanning for GCC installations..."
 
-GREATEST_VERSION=""
-GREATEST_CC=""
-GREATEST_CXX=""
+declare -A GCC_MAP
 
-# Find all gcc executables in PATH that match gcc or gcc-[version]
-GCC_LIST=$(compgen -c | grep -E '^gcc-[0-9]+$' | sort -ru)
-
-if [ -z "$GCC_LIST" ]; then
-    # Try to fallback to default GCC
-    GCC_LIST=$(compgen -c | grep -E '^gcc$')
-fi
+# Collect all GCC executables
+GCC_LIST=$(compgen -c | grep -E '^gcc(-[0-9]+(\.[0-9]+)*)?$' | sort -u)
 
 if [ -z "$GCC_LIST" ]; then
     echo "!!! No GCC installations found !!!"
@@ -20,27 +13,31 @@ if [ -z "$GCC_LIST" ]; then
 fi
 
 for gcc_bin in $GCC_LIST; do
-    # Check if it's an actual executable
-    if command -v "$gcc_bin" &> /dev/null; then
+    if command -v "$gcc_bin" &>/dev/null; then
         version=$("$gcc_bin" -dumpfullversion -dumpversion 2>/dev/null)
-        if [ -z "$version" ]; then
+        if [[ -z "$version" ]]; then
             version=$("$gcc_bin" --version | head -n1 | awk '{print $3}')
         fi
-        echo " * Found: $gcc_bin ($version)"
 
-        # Capture the first (highest) one and stop
-        if [ -z "$GREATEST_VERSION" ]; then
-            GREATEST_VERSION=$version
-            GREATEST_CC=$gcc_bin
-        fi
+        echo " * Found: $gcc_bin ($version)"
+        GCC_MAP["$version"]=$gcc_bin
     fi
 done
 
-# remove minor and patch (x.y.z -> x)
-GREATEST_VERSION=${GREATEST_VERSION%%.*}
+# Find greatest version using version sorting
+GREATEST_VERSION_FULL=$(printf "%s\n" "${!GCC_MAP[@]}" | sort -V | tail -n1)
+GREATEST_CC="${GCC_MAP[$GREATEST_VERSION_FULL]}"
 
-# create g++ binary from gcc binary (we expect it to be installed)
-GREATEST_CXX="${GREATEST_CC//gcc/g++}"
+# Convert full version -> major.minor
+IFS='.' read -r major minor patch <<< "$GREATEST_VERSION_FULL"
+GREATEST_VERSION="$major.$minor"
+
+# Match g++
+if command -v "${GREATEST_CC/gcc/g++}" &>/dev/null; then
+    GREATEST_CXX="${GREATEST_CC/gcc/g++}"
+else
+    GREATEST_CXX="g++"
+fi
 
 echo
 echo "--> Greatest GCC version detected: $GREATEST_VERSION ($GREATEST_CC/$GREATEST_CXX)"
