@@ -19,6 +19,10 @@ namespace rtm
 
         bool plot() const;
 
+        const std::vector<Parser::Point>& get_series() const { return serie_; }
+        const std::string& name() const { return name_; }
+        const ImVec4& get_color() const { return color_; }
+
     private:
         static constexpr seconds_f SECTION_SIZE = 2min;
         struct Section
