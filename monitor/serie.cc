@@ -251,9 +251,9 @@ namespace rtm
 
         auto finalize = [&]()
         {
-            stats.average = accumulated / range_size;
-            stats.rms = std::sqrt(square_accumulated / range_size);
-            stats.standard_deviation = std::sqrt((square_accumulated / range_size) - stats.average * stats.average);
+            stats.average = accumulated / static_cast<float>(range_size);
+            stats.rms = std::sqrt(square_accumulated / static_cast<float>(range_size));
+            stats.standard_deviation = std::sqrt((square_accumulated / static_cast<float>(range_size)) - stats.average * stats.average);
             return stats;
         };
 
