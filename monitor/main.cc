@@ -18,7 +18,7 @@
 #endif
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
 
-#include "plot.h"
+#include "main_window.h"
 
 // [Win32] Our example includes a copy of glfw3.lib pre-compiled with VS2010 to maximize ease of testing and compatibility with old VS compilers.
 // To link with VS2010-era libraries, VS2015+ requires linking with legacy_stdio_definitions.lib, which we do using this pragma.
@@ -127,14 +127,14 @@ int main(int argc, char* argv[])
     // Our state
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-    rtm::Plot plot;
+    rtm::MainWindow main_window;
     if (argc == 1)
     {
-        plot.load_dataset(".");
+        main_window.load_dataset(".");
     }
     else
     {
-        plot.load_dataset(argv[1]);
+        main_window.load_dataset(argv[1]);
     }
 
     // Main loop
@@ -168,7 +168,7 @@ int main(int argc, char* argv[])
                     ImGuiWindowFlags_NoMove     |
                     ImGuiWindowFlags_NoCollapse);
 
-        plot.draw();
+        main_window.draw();
 
         ImGui::End();
 

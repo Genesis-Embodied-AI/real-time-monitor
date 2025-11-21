@@ -3,6 +3,7 @@
 
 #include <filesystem>
 #include <functional>
+#include <implot.h>
 
 #include "serie.h"
 
@@ -11,20 +12,30 @@ namespace rtm
     class Plot
     {
     public:
-        void load_dataset(std::filesystem::path const& folder);
-
+        Plot(std::string const& name, std::string const& legend);
+        void add_serie(Serie&& serie, milliseconds_f max_y, nanoseconds end);
         void draw();
 
     private:
-        void draw_graphs(char const* tab_name, char const* legend, float max_y, bool request_fit, std::vector<Serie> const& series);
-        void draw_status_bar(bool is_downsampled);
+        void draw_stats_panel();
+        void draw_status_bar();
 
-        std::vector<Serie> diffs_;
-        std::vector<Serie> ups_;
+        void compute_stats_on_view_update();
+
+        std::string name_;
+        std::string legend_;
+
+        std::vector<Serie> series_;
+        std::vector<Statistics> stats_;
+        ImPlotRect old_limits_;
+        milliseconds_f max_y_{-1ns};
+        bool is_downsampled_{false};
 
         nanoseconds end_{-1ns};           // end (X) of the plots
-        milliseconds_f diff_max_{-1ns};   // max (Y) of the diff (jitter) plot
-        milliseconds_f up_max_{-1ns};     // max (Y) of the up (time up) plot
+
+        bool show_stats_{false};
+        float stats_bar_width{250.0f};
+        bool was_dragging_stats_bar{false};
     };
 }
 
