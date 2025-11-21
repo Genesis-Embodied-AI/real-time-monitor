@@ -30,6 +30,8 @@ namespace rtm
 
         std::string const& name() const { return name_; }
         Statistics compute_statistics(double begin, double end) const;
+        std::vector<Point> const& serie() const { return serie_; }
+        ImVec4 const& color() const { return color_; }
 
     private:
         static constexpr seconds_f SECTION_SIZE = 2min;
