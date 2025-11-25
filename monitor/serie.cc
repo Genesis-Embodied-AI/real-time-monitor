@@ -59,6 +59,13 @@ namespace rtm
                 max += SECTION_SIZE;
             }
         }
+
+        if (not section.points.empty())
+        {
+            section.min = min;
+            section.max = seconds_f{section.points.back().x};
+            sections.emplace_back(std::move(section));
+        }
     }
 
 
