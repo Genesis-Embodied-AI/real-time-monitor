@@ -148,6 +148,50 @@ namespace rtm
                 {
                     is_downsampled_ |= serie.plot();
                 }
+
+                // Snap Tooltip
+                if (ImPlot::IsPlotHovered()) 
+                {
+                    ImPlotPoint mouse = ImPlot::GetPlotMousePos();
+
+                    const rtm::Serie* closestSerie = nullptr;
+                    const Parser::Point* closestPoint = nullptr;
+                    float bestDist = FLT_MAX;
+
+                    // Find nearest point across all series
+                    for (auto const& serie : series_) 
+                    {
+                        for (auto const& pt : serie.get_series()) 
+                        {
+                            float dx = float(pt.x - mouse.x);
+                            float dy = float(pt.y - mouse.y);
+                            float dist = dx*dx + dy*dy;
+
+                            if (dist < bestDist) 
+                            {
+                                bestDist = dist;
+                                closestSerie = &serie;
+                                closestPoint = &pt;
+                            }
+                        }
+                    }
+
+                    if (closestSerie && closestPoint) 
+                    {
+                        // Tooltip
+                        ImGui::BeginTooltip();
+                        ImGui::Text("Serie: %s", closestSerie->name().c_str());
+                        ImGui::Separator();
+                        ImGui::Text("x: %.3f s", closestPoint->x);
+                        ImGui::Text("y: %.3f %s", closestPoint->y, legend_.c_str());
+                        ImGui::EndTooltip();
+
+                        // Marker on nearest point
+                        ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 6, closestSerie->get_color());
+                        ImPlot::PlotScatter("##closest", &closestPoint->x, &closestPoint->y, 1);
+                    }
+                }
+                
                 ImPlot::EndPlot();
             }
 
