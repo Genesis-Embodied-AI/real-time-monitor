@@ -1,3 +1,5 @@
+#include "rtm/parser.h"
+
 #include "main_window.h"
 
 namespace rtm
@@ -25,15 +27,23 @@ namespace rtm
             p.load_samples();
             auto color = generate_random_color();
 
+            std::string name;
+            name = p.header().process;
+            name += '.';
+            name += p.header().name;
+            name += " (";
+            name += format_iso_timestamp(p.header().start_time);
+            name += ')';
+
             {
                 // diff times
-                Serie s{p.header(), p.generate_times_diff(), color};
+                Serie s{name, p.generate_times_diff(), color};
                 diff_.add_serie(std::move(s), p.diff_max(), p.end());
             }
 
             {
                 // up times
-                Serie s{p.header(), p.generate_times_up(), color};
+                Serie s{name, p.generate_times_up(), color};
                 up_.add_serie(std::move(s), p.up_max(), p.end());
             }
         }

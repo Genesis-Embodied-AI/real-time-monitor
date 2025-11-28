@@ -1,4 +1,5 @@
 set(LIB_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/data.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/error.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/io.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/parser.cc

@@ -5,10 +5,11 @@
 #include <chrono>
 #include <string>
 
-#include "rtm/time_wrapper.h"
+#include "rtm/commands.h"
+#include "rtm/data.h"
 #include "rtm/error.h"
 #include "rtm/io.h"
-#include "rtm/commands.h"
+#include "rtm/time_wrapper.h"
 
 namespace rtm
 {
@@ -39,11 +40,6 @@ namespace rtm
         TickHeader const& header() const                { return header_;    }
         std::vector<nanoseconds> const& samples() const { return samples_;   }
 
-        struct Point
-        {
-            float x;
-            float y;
-        };
         std::vector<Point> generate_times_diff();
         std::vector<Point> generate_times_up();
 
@@ -63,17 +59,6 @@ namespace rtm
         milliseconds_f up_max_{-1ns};
         std::vector<nanoseconds> samples_;
     };
-
-    // Helper to downsample big series
-    // First pass with min/max to decimate a bit
-    // Second pass with LTTB
-    result<std::vector<Parser::Point>> minmax_lttb(std::vector<Parser::Point> const& series, uint32_t threshold);
-
-    // LTTB downsampler
-    result<std::vector<Parser::Point>> lttb(std::vector<Parser::Point> const& s, uint32_t threshold);
-
-    // Min/Max downsampler
-    result<std::vector<Parser::Point>> minmax_downsampler(std::vector<Parser::Point> const& series, uint32_t threshold);
 }
 
 #endif

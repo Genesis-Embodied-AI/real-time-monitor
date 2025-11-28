@@ -4,7 +4,8 @@
 #include <imgui.h>
 #include <unordered_map>
 
-#include "rtm/parser.h"
+#include "rtm/data.h"
+#include "rtm/time_wrapper.h"
 
 namespace rtm
 {
@@ -23,7 +24,7 @@ namespace rtm
     class Serie
     {
     public:
-        Serie(TickHeader const& header, std::vector<Parser::Point>&& raw_serie, ImVec4 color);
+        Serie(std::string const& name, std::vector<Point>&& raw_serie, ImVec4 color);
         ~Serie() = default;
 
         bool plot() const;
@@ -37,16 +38,16 @@ namespace rtm
         {
             seconds_f min;
             seconds_f max;
-            std::vector<Parser::Point> points;
+            std::vector<Point> points;
         };
-        void split_serie(std::vector<Section>& sections, std::vector<Parser::Point> const& flat);
+        void split_serie(std::vector<Section>& sections, std::vector<Point> const& flat);
 
         ImVec4 color_;
 
         std::string name_;
 
         std::vector<Section> sections_;
-        std::vector<Parser::Point> serie_;
+        std::vector<Point> serie_;
         bool is_downsampled_;
     };
 }
