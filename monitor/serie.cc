@@ -102,7 +102,7 @@ namespace rtm
         color_  = color;
     }
 
-    bool Serie::plot() const
+    bool Serie::plot()
     {
         if (serie_.empty())
         {
@@ -121,50 +121,97 @@ namespace rtm
         }
 
         auto limits = ImPlot::GetPlotLimits();
+
         if (limits.X.Size() < SECTION_SIZE.count())
         {
-            auto it = std::find_if(sections_.begin(), sections_.end(), [&](Section const& s)
-            {
-                return (s.min.count() >  limits.X.Min) and (s.max.count() >= limits.X.Max);
-            });
-            if (it == sections_.end())
-            {
-                // out of scope: show full serie
-                ImPlot::PlotLine(name_.c_str(), &serie_.at(0).x, &serie_.at(0).y, static_cast<int>(serie_.size()),
-                    0, 0, sizeof(Parser::Point));
-                return is_downsampled_;
-            }
+            // Check if we can reuse the cached sections
+            bool can_use_cache = cache_valid_ &&
+                                 (limits.X.Min >= cached_min_) &&
+                                 (limits.X.Max <= cached_max_);
 
-            // display 3 sections (before, here and after if possible)
-            if (it != sections_.begin())
+            if (!can_use_cache)
             {
-                it--;
-            }
+                // Cache miss - need to find the sections
+                cached_sections_.clear();
 
-            for (int i = 0; i < 3; ++i)
-            {
-                Parser::Point const* data = it->points.data();
-                ImPlot::PlotLine(name_.c_str(), &data->x, &data->y, static_cast<int>(it->points.size()),
-                    0, 0, sizeof(Parser::Point));
+                // Find first overlapping section
+                auto it_first = std::find_if(sections_.begin(), sections_.end(), [&](Section const &s)
+                                             { return (s.max.count() >= limits.X.Min) && (s.min.count() <= limits.X.Max); });
 
-                it++;
-                if (it == sections_.end())
+                if (it_first == sections_.end())
                 {
-                    break;
+                    // No sections overlap - fallback to downsampled view
+                    cache_valid_ = false;
+                    ImPlot::PlotLine(name_.c_str(), &serie_.at(0).x, &serie_.at(0).y,
+                                     static_cast<int>(serie_.size()), 0, 0, sizeof(Parser::Point));
+                    return is_downsampled_;
                 }
+
+                // Add one section before if possible (for smooth scrolling)
+                if (it_first != sections_.begin())
+                {
+                    --it_first;
+                }
+
+                // Collect all overlapping sections + neighbors
+                auto it = it_first;
+                while (it != sections_.end() &&
+                       (cached_sections_.empty() ||
+                        it->min.count() <= limits.X.Max + SECTION_SIZE.count()))
+                {
+                    cached_sections_.push_back(&(*it));
+                    ++it;
+                }
+
+                // Update cache bounds with some margin for small movements
+                double view_size = limits.X.Size();
+                double margin = view_size * CACHE_MARGIN_RATIO;
+
+                cached_min_ = cached_sections_.front()->min.count() - margin;
+                cached_max_ = cached_sections_.back()->max.count() + margin;
+                cache_valid_ = true;
+
+                // To Remove once PR validated
+                printf("Cache MISS - Found %zu sections covering [%.2f, %.2f] with cache [%.2f, %.2f]\n",
+                       cached_sections_.size(),
+                       cached_sections_.front()->min.count(),
+                       cached_sections_.back()->max.count(),
+                       cached_min_, cached_max_);
+            }
+            else
+            {
+                // To Remove once PR validated
+                static int hit_count = 0;
+                if (++hit_count % 100 == 0)
+                {
+                    printf("Cache HIT - Using %zu sections covering [%.2f, %.2f] with cache [%.2f, %.2f]\n",
+                           cached_sections_.size(),
+                           cached_sections_.front()->min.count(),
+                           cached_sections_.back()->max.count(),
+                           cached_min_, cached_max_);
+                }
+            }
+
+            // Plot all cached sections
+            for (auto const *section : cached_sections_)
+            {
+                Parser::Point const *data = section->points.data();
+                ImPlot::PlotLine(name_.c_str(), &data->x, &data->y,
+                                 static_cast<int>(section->points.size()),
+                                 0, 0, sizeof(Parser::Point));
             }
 
             return false;
         }
         else
         {
-            // downsampled
-            ImPlot::PlotLine(name_.c_str(), &serie_.at(0).x, &serie_.at(0).y, static_cast<int>(serie_.size()),
-                0, 0, sizeof(Parser::Point));
+            // Zoomed out - invalidate cache and show downsampled
+            cache_valid_ = false;
+            ImPlot::PlotLine(name_.c_str(), &serie_.at(0).x, &serie_.at(0).y,
+                             static_cast<int>(serie_.size()), 0, 0, sizeof(Parser::Point));
             return is_downsampled_;
         }
     }
-
 
     Statistics Serie::compute_statistics(double begin, double end) const
     {
@@ -251,9 +298,9 @@ namespace rtm
 
         auto finalize = [&]()
         {
-            stats.average = accumulated / range_size;
-            stats.rms = std::sqrt(square_accumulated / range_size);
-            stats.standard_deviation = std::sqrt((square_accumulated / range_size) - stats.average * stats.average);
+            stats.average = accumulated / static_cast<float>(range_size);
+            stats.rms = std::sqrt(square_accumulated / static_cast<float>(range_size));
+            stats.standard_deviation = std::sqrt((square_accumulated / static_cast<float>(range_size)) - stats.average * stats.average);
             return stats;
         };
 
