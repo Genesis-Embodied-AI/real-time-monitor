@@ -26,10 +26,10 @@ namespace rtm
         Serie(std::string const& name, std::vector<Point>&& raw_serie, ImVec4 color);
         ~Serie() = default;
 
-        bool plot() const;
+        bool plot(ImPlotRect& limits) const;
 
         bool is_cache_valid_in_limits(ImPlotRect& limits) const;
-        void update_section_cache(ImPlotRect& limits) const;
+        void update_section_cache(ImPlotRect& limits);
 
         std::string const& name() const { return name_; }
         Statistics compute_statistics(double begin, double end) const;
