@@ -109,55 +109,84 @@ namespace rtm
             (limits.X.Max <= cached_max_);
     }
 
-    void Serie::update_section_cache(ImPlotRect& limits) const
+    void Serie::update_section_cache(ImPlotRect& limits)
     {
-        // Cache miss - need to find the sections
-        cached_sections_.clear();
-
-        // Find first overlapping section
-        auto it_first = std::find_if(sections_.begin(), sections_.end(), [&](Section const &s)
-                                    { return (s.max.count() >= limits.X.Min) and (s.min.count() <= limits.X.Max); });
-
-        if (it_first == sections_.end())
+        if (not is_downsampled_)
         {
-            // No sections overlap - fallback to downsampled view
-            cached_min_ = 0.0;
-            cached_max_ = 0.0;
+            return; // No caching needed for small series
+        }
+        
+        if (limits.X.Size() >= SECTION_SIZE.count())
+        {
+            // Zoomed out - no cache needed
             return;
         }
-
-        // Add one section before if possible (for smooth scrolling)
-        if (it_first != sections_.begin())
+        
+        // Check if we can reuse the cached sections
+        if (not is_cache_valid_in_limits(limits))
         {
-            --it_first;
-        }
+            // Cache miss - need to find the sections
+            cached_sections_.clear();
 
-        // Collect all overlapping sections + neighbors
-        auto it = it_first;
-        while (it != sections_.end() and
-            (cached_sections_.empty() ||
-                it->min.count() <= limits.X.Max + SECTION_SIZE.count()))
+            // Find first overlapping section
+            auto it_first = std::find_if(sections_.begin(), sections_.end(), [&](Section const &s)
+                                        { return (s.max.count() >= limits.X.Min) and (s.min.count() <= limits.X.Max); });
+
+            if (it_first == sections_.end())
+            {
+                // No sections overlap - fallback to downsampled view
+                cached_min_ = 0.0;
+                cached_max_ = 0.0;
+                return;
+            }
+
+            // Add one section before if possible (for smooth scrolling)
+            if (it_first != sections_.begin())
+            {
+                --it_first;
+            }
+
+            // Collect all overlapping sections + neighbors
+            auto it = it_first;
+            while (it != sections_.end() and
+                (cached_sections_.empty() ||
+                    it->min.count() <= limits.X.Max + SECTION_SIZE.count()))
+            {
+                cached_sections_.push_back(&(*it));
+                ++it;
+            }
+
+            // Update cache bounds with some margin for small movements
+            double view_size = limits.X.Size();
+            double margin = view_size * CACHE_MARGIN_RATIO;
+
+            cached_min_ = cached_sections_.front()->min.count() - margin;
+            cached_max_ = cached_sections_.back()->max.count() + margin;
+
+            // To Remove once PR validated
+            printf("Cache MISS - Found %zu sections covering [%.2f, %.2f] with cache [%.2f, %.2f]\n",
+                cached_sections_.size(),
+                cached_sections_.front()->min.count(),
+                cached_sections_.back()->max.count(),
+                cached_min_, cached_max_);
+        }
+        else
         {
-            cached_sections_.push_back(&(*it));
-            ++it;
+            // Cache hit
+            // To Remove once PR validated
+            static int hit_count = 0;
+            if (++hit_count % 100 == 0)
+            {
+                printf("Cache HIT - Using %zu sections covering [%.2f, %.2f] with cache [%.2f, %.2f]\n",
+                    cached_sections_.size(),
+                    cached_sections_.front()->min.count(),
+                    cached_sections_.back()->max.count(),
+                    cached_min_, cached_max_);
+            }
         }
-
-        // Update cache bounds with some margin for small movements
-        double view_size = limits.X.Size();
-        double margin = view_size * CACHE_MARGIN_RATIO;
-
-        cached_min_ = cached_sections_.front()->min.count() - margin;
-        cached_max_ = cached_sections_.back()->max.count() + margin;
-
-        // To Remove once PR validated
-        printf("Cache MISS - Found %zu sections covering [%.2f, %.2f] with cache [%.2f, %.2f]\n",
-            cached_sections_.size(),
-            cached_sections_.front()->min.count(),
-            cached_sections_.back()->max.count(),
-            cached_min_, cached_max_);
     }
 
-    bool Serie::plot() const
+    bool Serie::plot(ImPlotRect& limits) const
     {
         if (serie_.empty())
         {
@@ -175,46 +204,23 @@ namespace rtm
             return is_downsampled_;
         }
 
-        auto limits = ImPlot::GetPlotLimits();
-
         if (limits.X.Size() < SECTION_SIZE.count())
         {
-            // Check if we can reuse the cached sections
-            if (not is_cache_valid_in_limits(limits))
-            {
-                // Cache miss - need to find the sections
-                update_section_cache(limits);
-            }
-            else
-            {
-                // To Remove once PR validated
-                static int hit_count = 0;
-                if (++hit_count % 100 == 0)
-                {
-                    printf("Cache HIT - Using %zu sections covering [%.2f, %.2f] with cache [%.2f, %.2f]\n",
-                           cached_sections_.size(),
-                           cached_sections_.front()->min.count(),
-                           cached_sections_.back()->max.count(),
-                           cached_min_, cached_max_);
-                }
-            }
-
-            // Plot all cached sections
+            // Zoomed in - plot cached sections
             for (auto const *section : cached_sections_)
             {
                 Parser::Point const *data = section->points.data();
                 ImPlot::PlotLine(name_.c_str(), &data->x, &data->y,
-                                 static_cast<int>(section->points.size()),
-                                 0, 0, sizeof(Parser::Point));
+                            static_cast<int>(section->points.size()),
+                            0, 0, sizeof(Parser::Point));
             }
-
             return false;
         }
         else
         {
-            // Zoomed out - invalidate cache and show downsampled
+            // Zoomed out - show full downsampled data
             ImPlot::PlotLine(name_.c_str(), &serie_.at(0).x, &serie_.at(0).y,
-                             static_cast<int>(serie_.size()), 0, 0, sizeof(Parser::Point));
+                            static_cast<int>(serie_.size()), 0, 0, sizeof(Parser::Point));
             return is_downsampled_;
         }
     }

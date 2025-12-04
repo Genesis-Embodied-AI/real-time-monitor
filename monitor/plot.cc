@@ -144,10 +144,22 @@ namespace rtm
                 ImPlot::SetupAxes("time (s)", legend_.c_str());
 
                 compute_stats_on_view_update();
+
+                // Get current plot limits once for all series
+                auto limits = ImPlot::GetPlotLimits();
+                
+                // Update caches for all series based on current view
+                for (auto& serie : series_)
+                {
+                    serie.update_section_cache(limits);
+                }
+                
+                // Now plot all series
                 for (auto const& serie : series_)
                 {
-                    is_downsampled_ |= serie.plot();
+                    is_downsampled_ |= serie.plot(limits);
                 }
+                
                 ImPlot::EndPlot();
             }
 
