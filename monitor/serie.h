@@ -53,9 +53,9 @@ namespace rtm
         bool is_downsampled_;
 
         static constexpr double CACHE_MARGIN_RATIO = 0.1;     // 10% margin on each side
-        mutable std::vector<Section const *> cached_sections_; // Pointers to currently displayed sections
-        mutable double cached_min_ = 0.0;
-        mutable double cached_max_ = 0.0;
+        std::vector<Section const *> cached_sections_; // Pointers to currently displayed sections
+        double cached_min_ = 0.0;
+        double cached_max_ = 0.0;
     };
 }
 
