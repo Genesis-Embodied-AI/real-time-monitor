@@ -26,7 +26,10 @@ namespace rtm
         Serie(std::string const& name, std::vector<Point>&& raw_serie, ImVec4 color);
         ~Serie() = default;
 
-        bool plot();
+        bool plot() const;
+
+        bool is_cache_valid_in_limits(ImPlotRect& limits) const;
+        void update_section_cache(ImPlotRect& limits) const;
 
         std::string const& name() const { return name_; }
         Statistics compute_statistics(double begin, double end) const;
@@ -49,11 +52,10 @@ namespace rtm
         std::vector<Point> serie_;
         bool is_downsampled_;
 
-        constexpr double CACHE_MARGIN_RATIO = 0.1;     // 10% margin on each side
-        std::vector<Section const *> cached_sections_; // Pointers to currently displayed sections
-        double cached_min_ = 0.0;
-        double cached_max_ = 0.0;
-        bool cache_valid_ = false;
+        static constexpr double CACHE_MARGIN_RATIO = 0.1;     // 10% margin on each side
+        mutable std::vector<Section const *> cached_sections_; // Pointers to currently displayed sections
+        mutable double cached_min_ = 0.0;
+        mutable double cached_max_ = 0.0;
     };
 }
 

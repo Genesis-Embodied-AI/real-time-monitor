@@ -203,7 +203,7 @@ namespace rtm
                 ImPlot::SetupAxisFormat(ImAxis_Y1, time_formatter, &y_to_seconds);
 
                 compute_stats_on_view_update();
-                for (auto & serie : series_)
+                for (auto const& serie : series_)
                 {
                     is_downsampled_ |= serie.plot();
                 }
