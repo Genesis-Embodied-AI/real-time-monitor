@@ -38,7 +38,7 @@ namespace rtm
     }
 
 
-    void Serie::split_serie(std::vector<Section>& sections, std::vector<Parser::Point> const& flat)
+    void Serie::split_serie(std::vector<Section>& sections, std::vector<Point> const& flat)
     {
         Section section;
         seconds_f min = 0min;
@@ -69,7 +69,7 @@ namespace rtm
     }
 
 
-    Serie::Serie(TickHeader const& header, std::vector<Parser::Point>&& raw_serie, ImVec4 color)
+    Serie::Serie(std::string const& name, std::vector<Point>&& raw_serie, ImVec4 color)
     {
         constexpr uint32_t DECIMATION = 200'000;
 
@@ -92,13 +92,7 @@ namespace rtm
         nanoseconds t2 = since_epoch();
         printf("loaded in %f ms (%ld)\n", duration_cast<milliseconds_f>(t2 - t1).count(), serie_.size());
 
-        name_ = header.process;
-        name_ += '.';
-        name_ += header.name;
-        name_ += " (";
-        name_ += format_iso_timestamp(header.start_time);
-        name_ += ')';
-
+        name_   = name;
         color_  = color;
     }
 
@@ -116,7 +110,7 @@ namespace rtm
         {
             // skip smart display: the serie is small enough
             ImPlot::PlotLine(name_.c_str(), &serie_.at(0).x, &serie_.at(0).y, static_cast<int>(serie_.size()),
-                0, 0, sizeof(Parser::Point));
+                0, 0, sizeof(Point));
             return is_downsampled_;
         }
 
@@ -131,7 +125,7 @@ namespace rtm
             {
                 // out of scope: show full serie
                 ImPlot::PlotLine(name_.c_str(), &serie_.at(0).x, &serie_.at(0).y, static_cast<int>(serie_.size()),
-                    0, 0, sizeof(Parser::Point));
+                    0, 0, sizeof(Point));
                 return is_downsampled_;
             }
 
@@ -143,9 +137,9 @@ namespace rtm
 
             for (int i = 0; i < 3; ++i)
             {
-                Parser::Point const* data = it->points.data();
+                Point const* data = it->points.data();
                 ImPlot::PlotLine(name_.c_str(), &data->x, &data->y, static_cast<int>(it->points.size()),
-                    0, 0, sizeof(Parser::Point));
+                    0, 0, sizeof(Point));
 
                 it++;
                 if (it == sections_.end())
@@ -160,7 +154,7 @@ namespace rtm
         {
             // downsampled
             ImPlot::PlotLine(name_.c_str(), &serie_.at(0).x, &serie_.at(0).y, static_cast<int>(serie_.size()),
-                0, 0, sizeof(Parser::Point));
+                0, 0, sizeof(Point));
             return is_downsampled_;
         }
     }
@@ -209,7 +203,7 @@ namespace rtm
 
         // first section
         // -> search for the begining
-        auto first_point = std::find_if(first_section.begin(), first_section.end(), [&](Parser::Point const& p)
+        auto first_point = std::find_if(first_section.begin(), first_section.end(), [&](Point const& p)
         {
             return (begin <= p.x);
         });
@@ -220,7 +214,7 @@ namespace rtm
 
         // last section
         // -> search for the end
-        auto last_point = std::find_if(last_section.begin(), last_section.end(), [&](Parser::Point const& p)
+        auto last_point = std::find_if(last_section.begin(), last_section.end(), [&](Point const& p)
         {
             return (end <= p.x);
         });
@@ -237,7 +231,7 @@ namespace rtm
         stats.min = first_section.front().y;
         stats.max = first_section.front().y;
 
-        auto compute_section = [&](std::vector<Parser::Point>::const_iterator section_begin, std::vector<Parser::Point>::const_iterator section_end)
+        auto compute_section = [&](std::vector<Point>::const_iterator section_begin, std::vector<Point>::const_iterator section_end)
         {
             for (auto it = section_begin; it != section_end; ++it)
             {
@@ -251,9 +245,10 @@ namespace rtm
 
         auto finalize = [&]()
         {
-            stats.average = accumulated / range_size;
-            stats.rms = std::sqrt(square_accumulated / range_size);
-            stats.standard_deviation = std::sqrt((square_accumulated / range_size) - stats.average * stats.average);
+            float range_f = static_cast<float>(range_size);
+            stats.average = accumulated / range_f;
+            stats.rms = std::sqrt(square_accumulated / range_f);
+            stats.standard_deviation = std::sqrt((square_accumulated / range_f) - stats.average * stats.average);
             return stats;
         };
 
