@@ -144,7 +144,7 @@ namespace rtm
                 ImPlot::SetupAxes("time (s)", legend_.c_str());
 
                 compute_stats_on_view_update();
-                for (auto & serie : series_)
+                for (auto const& serie : series_)
                 {
                     is_downsampled_ |= serie.plot();
                 }
