@@ -35,7 +35,7 @@ namespace rtm
         // TODO: support begin/end
         // if end = 0, takes alls samples
         // if begin/end is negative, reference is end, otherwise it is begin (relative)
-        void load_samples();
+        bool load_samples();
 
         TickHeader const& header() const                { return header_;    }
         std::vector<nanoseconds> const& samples() const { return samples_;   }

@@ -40,7 +40,7 @@ namespace rtm
         printf("thread:  %s\n", header_.name.c_str());
     }
 
-    void Parser::load_samples()
+    bool Parser::load_samples()
     {
         // jump to data section
         io_->seek(header_.data_section_offset);
@@ -135,9 +135,15 @@ namespace rtm
             }
         }
 
+        if(samples_.size() == 0)
+        {
+            printf("Empty file, skipping.\n");
+            return false;
+        }
         begin_ = samples_.front();
         end_   = samples_.back();
         printf("whole size: %ld\n", samples_.size());
+        return true;
     }
 
 
