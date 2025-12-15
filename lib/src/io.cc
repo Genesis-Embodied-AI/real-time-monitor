@@ -11,6 +11,7 @@ namespace rtm
     void FileWrite::write(void const* data, std::size_t data_size)
     {
         ofs_.write(reinterpret_cast<char const*>(data), data_size);
+        ofs_.flush();
     }
 
     void FileWrite::seek(std::size_t pos)
