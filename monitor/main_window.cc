@@ -24,7 +24,10 @@ namespace rtm
             auto io = std::make_unique<rtm::FileRead>(entry.c_str());
             Parser p{std::move(io)};
             p.load_header();
-            p.load_samples();
+            if (not p.load_samples())
+            {
+                continue;
+            }
             auto color = generate_random_color();
 
             std::string name;
