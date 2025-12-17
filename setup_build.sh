@@ -29,12 +29,37 @@ else
 fi
 echo $build_dir
 
-source "$SOURCE_DIR/tools/setup/detect_gcc.sh"
+# Detect OS
+OS=$(uname -s)
+
+source "$SOURCE_DIR/tools/setup/detect_compiler.sh"
+
+# Detect the archecture
+conan profile detect --force > /dev/null 2>&1
+ARCH_NAME=$(conan profile show -cx host | grep "arch=" | cut -d'=' -f2)
+
+echo "Architecture for Conan: $ARCH_NAME"
+
+# Set platform-specific variables
+if [[ "$OS" == "Darwin" ]]; then
+    OS_NAME="Macos"
+    COMPILER_NAME="apple-clang"
+    LIBCXX_NAME="libc++"
+    SYSTEM_NAME="Darwin"
+    SYSTEM_VAR="APPLE"
+else
+    OS_NAME="Linux"
+    COMPILER_NAME="gcc"
+    LIBCXX_NAME="libstdc++11"
+    SYSTEM_NAME="Linux"
+    SYSTEM_VAR="LINUX"
+fi
 
 # Generate cmake toolchain profile
 TEMPLATE_CMAKE_TOOLCHAIN="$SOURCE_DIR/cmake/toolchain.cmake.template"
 OUTPUT_CMAKE_TOOLCHAIN="$build_dir/toolchain.cmake"
 sed \
+  -e "s|SYSTEM_NAME|${SYSTEM_NAME}|g" \
   -e "s|MAJOR_VERSION|${GREATEST_VERSION}|g" \
   -e "s|BINARY_PATH_CC|$(command -v $GREATEST_CC)|g" \
   -e "s|BINARY_PATH_CXX|$(command -v $GREATEST_CXX)|g" \
@@ -44,6 +69,10 @@ sed \
 TEMPLATE_CONAN_PROFILE="$SOURCE_DIR/conan/profile.txt.template"
 OUTPUT_CONAN_PROFILE="$build_dir/profile.txt"
 sed \
+  -e "s|OS_NAME|${OS_NAME}|g" \
+  -e "s|ARCH_NAME|${ARCH_NAME}|g" \
+  -e "s|COMPILER_NAME|${COMPILER_NAME}|g" \
+  -e "s|LIBCXX_NAME|${LIBCXX_NAME}|g" \
   -e "s|MAJOR_VERSION|${GREATEST_VERSION}|g" \
   -e "s|BINARY_PATH_CC|$(command -v $GREATEST_CC)|g" \
   -e "s|BINARY_PATH_CXX|$(command -v $GREATEST_CXX)|g" \

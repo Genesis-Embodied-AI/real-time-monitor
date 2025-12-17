@@ -1,9 +1,9 @@
 [settings]
-os=Linux
-arch=x86_64
-compiler=gcc
+os=OS_NAME
+arch=ARCH_NAME
+compiler=COMPILER_NAME
 compiler.version=MAJOR_VERSION
-compiler.libcxx=libstdc++11
+compiler.libcxx=LIBCXX_NAME
 compiler.cppstd=23
 build_type=Release
 
