@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  build_x86:
+  build:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
