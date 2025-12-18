@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "rtm/parser.h"
 
 #include "main_window.h"

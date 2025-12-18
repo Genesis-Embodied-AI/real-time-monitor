@@ -17,7 +17,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        OS: ["ubuntu-24.04"]
+        OS: ["ubuntu-24.04", macos-latest]
 
     steps:
       - uses: actions/checkout@v4
@@ -29,7 +29,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: wheelhouse-rtm-linux
+          name: wheelhouse-${{ matrix.os }}
           path: wheelhouse/*.whl
 
   release:
@@ -44,8 +44,9 @@ jobs:
       - name: Download wheels artifact
         uses: actions/download-artifact@v4
         with:
-          name: wheelhouse-rtm-linux
           path: wheelhouse
+          pattern: wheelhouse-*
+          merge-multiple: true
 
       - name: Create release
         env:

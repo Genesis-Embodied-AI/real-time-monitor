@@ -32,14 +32,22 @@ BUILD_TOOLS = "OFF"
 # https://github.com/pypa/cibuildwheel/blob/main/docs/options.md
 build-verbosity = 1
 manylinux-x86_64-image = "manylinux_2_28"
-build = ["cp310-manylinux_x86_64", "cp311-manylinux_x86_64", "cp312-manylinux_x86_64"]
+build = ["cp310-*", "cp311-*", "cp312-*"]
 
 [[tool.cibuildwheel.overrides]]
-# nanobind does not support Stable ABI for Python < 3.12
-select = "cp3{10,11}-*"
+# nanobind does not support Stable ABI for Python < 3.12 - Linux
+select = "cp3{10,11}-*linux*"
 config-settings = { "cmake.define.CMAKE_CI_BUILD" = true, "cmake.define.CMAKE_FIND_ROOT_PATH" = "/tmp/rtm_build_config", "cmake.define.CMAKE_TOOLCHAIN_FILE" = "/tmp/rtm_build_config/toolchain.cmake" }
 repair-wheel-command = [
   "auditwheel repair --zip-compression-level=9 -w {dest_dir} {wheel}"
+]
+
+[[tool.cibuildwheel.overrides]]
+# nanobind does not support Stable ABI for Python < 3.12 - macOS
+select = "cp3{10,11}-macosx*"
+config-settings = { "cmake.define.CMAKE_CI_BUILD" = true, "cmake.define.CMAKE_OSX_DEPLOYMENT_TARGET" = "10.15" }
+repair-wheel-command = [
+  "delocate-wheel -w {dest_dir} {wheel}"
 ]
 
 [tool.cibuildwheel.config-settings]
@@ -57,4 +65,19 @@ before-all = [
 repair-wheel-command = [
   "auditwheel repair --zip-compression-level=9 -w {dest_dir} {wheel}",
   "pipx run abi3audit --strict --report {wheel}",
+]
+
+[tool.cibuildwheel.macos]
+environment = { MACOSX_DEPLOYMENT_TARGET = "10.15" }
+archs = ["arm64", "x86_64"]
+config-settings = { "cmake.define.CMAKE_OSX_DEPLOYMENT_TARGET" = "10.15" }
+
+before-all = [
+  "pipx install conan",
+  "./setup_build.sh /tmp/rtm_build_config",
+  "source tools/setup/version.sh && sed -i '' \"s/0\\.0\\.0/${VERSION}/g\" pyproject.toml"
+]
+
+repair-wheel-command = [
+  "delocate-wheel -w {dest_dir} {wheel}"
 ]
