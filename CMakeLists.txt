@@ -52,4 +52,7 @@ if (SKBUILD)
     target_compile_options(real_time_monitor PRIVATE -Wno-shadow -Wno-cast-qual -Wno-pedantic)
 
     install(TARGETS real_time_monitor DESTINATION .)
+    if (NOT APPLE)
+        add_subdirectory(monitor)
+    endif()
 endif()
