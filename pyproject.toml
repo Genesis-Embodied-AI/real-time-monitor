@@ -52,9 +52,11 @@ repair-wheel-command = [
 
 [tool.cibuildwheel.config-settings]
 "wheel.py-api" = "cp312"
-"cmake.define.CMAKE_CI_BUILD" = true
-"cmake.define.CMAKE_FIND_ROOT_PATH" = "/tmp/rtm_build_config"
-"cmake.define.CMAKE_TOOLCHAIN_FILE" = "/tmp/rtm_build_config/toolchain.cmake"
+
+[tool.cibuildwheel.config-settings.cmake.define]
+CMAKE_CI_BUILD = true
+CMAKE_FIND_ROOT_PATH = "/tmp/rtm_build_config"
+CMAKE_TOOLCHAIN_FILE = "/tmp/rtm_build_config/toolchain.cmake"
 
 [tool.cibuildwheel.linux]
 before-all = [
@@ -69,8 +71,7 @@ repair-wheel-command = [
 
 [tool.cibuildwheel.macos]
 environment = { MACOSX_DEPLOYMENT_TARGET = "10.15" }
-archs = ["arm64", "x86_64"]
-config-settings = { "cmake.define.CMAKE_OSX_DEPLOYMENT_TARGET" = "10.15" }
+archs = ["universal2"]
 
 before-all = [
   "pipx install conan",
@@ -79,5 +80,6 @@ before-all = [
 ]
 
 repair-wheel-command = [
-  "delocate-wheel -w {dest_dir} {wheel}"
+  "delocate-wheel -w {dest_dir} {wheel}",
+  "pipx run abi3audit --strict --report {wheel}"
 ]
