@@ -83,7 +83,7 @@ namespace rtm
                 }))
             .def_prop_ro("name", [](Parser &p) {return p.header().name;})
             .def_prop_ro("process", [](Parser &p) {return p.header().process;})
-            .def_prop_ro("start_time", [](Parser &p) {return std::chrono::system_clock::time_point(p.header().start_time);})
+            .def_prop_ro("start_time", [](Parser &p) {return std::chrono::time_point<std::chrono::system_clock>(p.header().start_time);})
             .def("samples", &Parser::samples)
             .def("generate_times_diff", [](Parser &p) {
                 return split_point_vector(p.generate_times_diff());
