@@ -22,12 +22,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install OS dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y libglfw3-dev
-
       - name: Build wheels
         uses: pypa/cibuildwheel@v3.3.0
         with:

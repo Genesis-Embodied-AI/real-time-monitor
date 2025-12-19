@@ -62,7 +62,8 @@ CMAKE_TOOLCHAIN_FILE = "/tmp/rtm_build_config/toolchain.cmake"
 before-all = [
   'pipx install conan',
   './setup_build.sh /tmp/rtm_build_config',
-  'source tools/setup/version.sh && sed -i "s/0\.0\.0/${VERSION}/g" pyproject.toml'
+  'source tools/setup/version.sh && sed -i "s/0\.0\.0/${VERSION}/g" pyproject.toml',
+  'apt-get update -y && apt-get install -y libglfw3-dev'
 ]
 repair-wheel-command = [
   "auditwheel repair --zip-compression-level=9 -w {dest_dir} {wheel}",
