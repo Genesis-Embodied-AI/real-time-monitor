@@ -54,5 +54,9 @@ set(MONITOR_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/plot.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/serie.cc
     )
-add_executable(monitor ${MONITOR_SRCS})
-target_link_libraries(monitor PRIVATE implot rtm)
+add_executable(rtm_gui ${MONITOR_SRCS})
+target_link_libraries(rtm_gui PRIVATE implot rtm)
+
+if(NOT "${SKBUILD_SCRIPTS_DIR}" STREQUAL "")
+    install(TARGETS rtm_gui DESTINATION ${SKBUILD_SCRIPTS_DIR})
+endif()
