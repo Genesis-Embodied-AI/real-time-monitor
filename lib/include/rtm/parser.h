@@ -32,6 +32,8 @@ namespace rtm
 
         void load_header();
 
+        void print_header();
+
         // TODO: support begin/end
         // if end = 0, takes alls samples
         // if begin/end is negative, reference is end, otherwise it is begin (relative)

@@ -32,7 +32,10 @@ namespace rtm
 
         header_.process = read_string();
         header_.name = read_string();
+    }
 
+    void Parser::print_header()
+    {
         printf("version: %d\n", header_.version);
         printf("offset:  %ld\n", header_.data_section_offset);
         printf("start:   %ld\n", header_.start_time.count());
@@ -137,12 +140,10 @@ namespace rtm
 
         if(samples_.size() == 0)
         {
-            printf("Empty file, skipping.\n");
             return false;
         }
         begin_ = samples_.front();
         end_   = samples_.back();
-        printf("whole size: %ld\n", samples_.size());
         return true;
     }
 
