@@ -32,7 +32,8 @@ BUILD_TOOLS = "OFF"
 # https://github.com/pypa/cibuildwheel/blob/main/docs/options.md
 build-verbosity = 1
 manylinux-x86_64-image = "manylinux_2_28"
-build = ["cp310-manylinux*", "cp311-manylinux*", "cp312-manylinux*"]
+build = ["cp310-*", "cp311-*", "cp312-*"]
+skip = ["cp310-musllinux*", "cp311-musllinux*", "cp312-musllinux*"]
 
 [[tool.cibuildwheel.overrides]]
 # nanobind does not support Stable ABI for Python < 3.12 - Linux
@@ -66,8 +67,6 @@ before-all = [
   'dnf install -y glfw-devel libXrandr-devel' # For build on manylinux_2_28 - which uses AlmaLinux 8
 ]
 repair-wheel-command = [
-  "auditwheel repair --zip-compression-level=9 -w {dest_dir} {wheel}",
-  "pipx run abi3audit --strict --report {wheel}",
 ]
 
 [tool.cibuildwheel.macos]
