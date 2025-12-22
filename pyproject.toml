@@ -32,7 +32,7 @@ BUILD_TOOLS = "OFF"
 # https://github.com/pypa/cibuildwheel/blob/main/docs/options.md
 build-verbosity = 1
 manylinux-x86_64-image = "manylinux_2_28"
-build = ["cp310-*", "cp311-*", "cp312-*"]
+build = ["cp310-manylinux*", "cp311-manylinux*", "cp312-manylinux*"]
 
 [[tool.cibuildwheel.overrides]]
 # nanobind does not support Stable ABI for Python < 3.12 - Linux
