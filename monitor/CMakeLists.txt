@@ -10,7 +10,7 @@ if (LINUX)
 
     find_package(glfw3 REQUIRED)
     find_package(OpenGL REQUIRED)
-    set(OS_SPECIFIC_LIBRARIES glfw OpenGL::GL)
+    set(OS_SPECIFIC_LIBRARIES glfw OpenGL::GL ${CMAKE_DL_LIBS})
 endif()
 
 if (APPLE)
