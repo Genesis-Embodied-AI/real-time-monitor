@@ -7,7 +7,7 @@ p.init(output_file="test.tick", process="python", task="my_task", period_ms=1, p
 TARGET = 0.001  # 1 ms
 
 for i in range(10000):
-    p.log()
+    p.log_start()
     start = time.perf_counter()
 
     # ---- dummy computation ----
@@ -16,7 +16,7 @@ for i in range(10000):
     # ---- adjust to hit 1 ms ----
     elapsed = time.perf_counter() - start
     remaining = TARGET - elapsed
-    p.log()
+    p.log_end()
 
     if remaining > 0:
         time.sleep(remaining)
