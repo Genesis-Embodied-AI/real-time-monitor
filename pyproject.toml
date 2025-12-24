@@ -64,7 +64,7 @@ before-all = [
   'pipx install conan',
   './setup_build.sh /tmp/rtm_build_config',
   'source tools/setup/version.sh && sed -i "s/0\.0\.0/${VERSION}/g" pyproject.toml',
-  'dnf install -y glfw-devel libXrandr-devel' # For build on manylinux_2_28 - which uses AlmaLinux 8
+  'dnf install -y libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel' # For build on manylinux_2_28 - which uses AlmaLinux 8
 ]
 repair-wheel-command = [
 ]
