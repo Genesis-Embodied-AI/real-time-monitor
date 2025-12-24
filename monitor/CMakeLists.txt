@@ -1,5 +1,6 @@
 find_package(imgui REQUIRED)
 
+
 if (LINUX)
     set(OS_LIB_SOURCES
         ${CMAKE_CURRENT_SOURCE_DIR}/backend/imgui_impl_glfw.cpp
@@ -8,7 +9,29 @@ if (LINUX)
 
     set(OS_MAIN_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/main.cc)
 
-    find_package(glfw3 REQUIRED)
+    if (SKBUILD)
+        # Build GLFW for source
+        # ---- GLFW options (must be set BEFORE FetchContent_MakeAvailable) ----
+        set(GLFW_BUILD_NULL       ON  CACHE BOOL "" FORCE)
+        set(GLFW_BUILD_X11        ON  CACHE BOOL "" FORCE)
+        set(GLFW_BUILD_WAYLAND    ON CACHE BOOL "" FORCE)
+        set(GLFW_BUILD_EXAMPLES   OFF CACHE BOOL "" FORCE)
+        set(GLFW_BUILD_TESTS      OFF CACHE BOOL "" FORCE)
+        set(GLFW_BUILD_DOCS       OFF CACHE BOOL "" FORCE)
+        set(GLFW_INSTALL       OFF CACHE BOOL "" FORCE)
+        set(GLFW_LIBRARY_TYPE     "STATIC"  CACHE STRING "" FORCE)
+        set(CMAKE_POSITION_INDEPENDENT_CODE ON CACHE BOOL "" FORCE)
+
+        include(FetchContent)
+        FetchContent_Declare(glfw
+        GIT_REPOSITORY    https://github.com/glfw/glfw.git
+        GIT_TAG           3.4
+        )
+        FetchContent_MakeAvailable(glfw)
+    else()
+        find_package(glfw3 REQUIRED)
+    endif()
+
     find_package(OpenGL REQUIRED)
     set(OS_SPECIFIC_LIBRARIES glfw OpenGL::GL)
 endif()
@@ -54,5 +77,9 @@ set(MONITOR_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/plot.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/serie.cc
     )
-add_executable(monitor ${MONITOR_SRCS})
-target_link_libraries(monitor PRIVATE implot rtm)
+add_executable(rtm_gui ${MONITOR_SRCS})
+target_link_libraries(rtm_gui PRIVATE implot rtm)
+
+if (SKBUILD)
+    install(TARGETS rtm_gui DESTINATION ${SKBUILD_SCRIPTS_DIR})
+endif()
