@@ -1,7 +1,10 @@
 set(LIB_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/data.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/error.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/io.cc
+
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/io/io.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/io/posix/file.cc
+
     ${CMAKE_CURRENT_SOURCE_DIR}/src/parser.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/probe.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/serializer.cc

@@ -1,4 +1,5 @@
 #include "rtm/probe.h"
+#include "rtm/io/file.h"
 
 using namespace std::chrono;
 
@@ -15,7 +16,8 @@ int main(int argc, char* argv[])
     uint64_t samples = std::stoull(argv[1]);
     printf("Generate %ld samples\n", samples);
 
-    auto io = std::make_unique<rtm::FileWrite>("test.tick");
+    auto io = std::make_unique<rtm::File>("test.tick");
+    io->open(rtm::access::Mode::WRITE_ONLY);
     rtm::Probe probe;
     probe.init("generator", "one_task",
             START, 1ms, 42,

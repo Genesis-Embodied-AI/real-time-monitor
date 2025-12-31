@@ -7,7 +7,7 @@
 #include <string_view>
 #include <vector>
 
-#include "rtm/io.h"
+#include "rtm/io/io.h"
 #include "rtm/time_wrapper.h"
 
 namespace rtm
@@ -20,7 +20,7 @@ namespace rtm
 
         void init(std::string_view process, std::string_view task_name,
                   nanoseconds process_start_time, nanoseconds task_period, uint32_t task_priority,
-                  std::unique_ptr<AbstractWriteIO> io);
+                  std::unique_ptr<AbstractIO> io);
 
         void update_priority(uint32_t priority);
         void update_period(nanoseconds period);
@@ -39,7 +39,7 @@ namespace rtm
 
         nanoseconds last_reference_{};
 
-        std::unique_ptr<AbstractWriteIO> io_{};
+        std::unique_ptr<AbstractIO> io_{};
     };
 }
 
