@@ -1,4 +1,5 @@
 #include "rtm/probe.h"
+#include "rtm/io/posix/local_socket.h"
 
 using namespace std::chrono;
 
@@ -15,7 +16,14 @@ int main(int argc, char* argv[])
     uint64_t samples = std::stoull(argv[1]);
     printf("Generate %ld samples\n", samples);
 
-    auto io = std::make_unique<rtm::FileWrite>("test.tick");
+    auto io = std::make_unique<rtm::LocalSocket>();
+    auto rc = io->open(rtm::access::Mode::READ_WRITE);
+    if (rc)
+    {
+        printf("io open() error: %s\n", rc.message().c_str());
+        return 1;
+    }
+
     rtm::Probe probe;
     probe.init("generator", "one_task",
             START, 1ms, 42,

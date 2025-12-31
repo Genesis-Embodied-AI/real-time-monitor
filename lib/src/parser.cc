@@ -3,7 +3,7 @@
 
 namespace rtm
 {
-    Parser::Parser(std::unique_ptr<AbstractReadIO> io)
+    Parser::Parser(std::unique_ptr<AbstractIO> io)
         : io_{std::move(io)}
     {
 

@@ -1,7 +1,8 @@
-#ifndef RTM_LIB_TIME_WRAPPER_H
-#define RTM_LIB_TIME_WRAPPER_H
+#ifndef RTM_LIB_OS_TIME_H
+#define RTM_LIB_OS_TIME_H
 
 #include <chrono>
+#include <string>
 
 namespace rtm
 {
@@ -14,6 +15,10 @@ namespace rtm
 
     // return processus start time (since epoch)
     nanoseconds start_time();
+
+    std::string format_iso_timestamp(nanoseconds timestamp);
+
+    void sleep(nanoseconds delay);
 }
 
 #endif
