@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "rtm/io/io.h"
-#include "rtm/time_wrapper.h"
+#include "rtm/os/time.h"
 
 namespace rtm
 {

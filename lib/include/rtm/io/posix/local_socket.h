@@ -7,10 +7,12 @@
 
 namespace rtm
 {
+    constexpr char const* DEFAULT_LISTENING_PATH = "/tmp/rtm_recorder";
+
     class LocalListener : public AbstractListener
     {
     public:
-        LocalListener(std::string_view local_path);
+        LocalListener(std::string_view local_path = DEFAULT_LISTENING_PATH);
         virtual ~LocalListener();
 
         std::error_code listen(int backlog) override;
@@ -24,7 +26,7 @@ namespace rtm
     class LocalSocket : public AbstractSocket
     {
     public:
-        LocalSocket(std::string_view address = "");
+        LocalSocket(std::string_view address = DEFAULT_LISTENING_PATH);
         LocalSocket(os_socket fd, access::Mode modes);
         virtual ~LocalSocket();
 

@@ -1,7 +1,7 @@
 #ifndef RTM_LIB_IO_NULL_H
 #define RTM_LIB_IO_NULL_H
 
-#include "rtm/io.h"
+#include "rtm/io/io.h"
 
 namespace rtm
 {
@@ -12,13 +12,14 @@ namespace rtm
         NullIO() = default;
         virtual ~NullIO() = default;
 
-        std::error_code open(access::Mode) override { return {}; }
-        std::error_code close() override { return {}; }
+        int64_t read(void*, int64_t) override { return 0; };
+        int64_t write(void const*, int64_t) override { return 0; }
 
-        int64_t read(void*, std::size_t) override { return 0; };
-        void write(void const*, std::size_t) override {}
+        std::error_code seek(int64_t) override { return {}; }
 
-        std::error_code seek(std::size_t) override { return {}; }
+    protected:
+        std::error_code do_open(access::Mode) override { return {}; }
+        std::error_code do_close() override { return {}; }
     };
 }
 
