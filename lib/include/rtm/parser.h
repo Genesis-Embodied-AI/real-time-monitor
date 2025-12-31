@@ -10,7 +10,7 @@
 #include "rtm/data.h"
 #include "rtm/error.h"
 #include "rtm/io/io.h"
-#include "rtm/time_wrapper.h"
+#include "rtm/os/time.h"
 
 namespace rtm
 {

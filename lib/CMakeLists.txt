@@ -10,7 +10,9 @@ set(LIB_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/parser.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/probe.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/serializer.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/time_wrapper.cc)
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/os/time.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/os/posix/time.cc
+    )
 
 add_library(rtm ${LIB_SRCS})
 target_include_directories(rtm PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
