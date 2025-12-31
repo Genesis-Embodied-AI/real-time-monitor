@@ -3,9 +3,8 @@
 
 #include <chrono>
 #include <cstdint>
-#include <functional>
+#include <memory>
 #include <string_view>
-#include <type_traits>
 #include <vector>
 
 #include "rtm/io.h"

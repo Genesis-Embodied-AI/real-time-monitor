@@ -4,11 +4,11 @@
 
 namespace rtm
 {
-    result<std::vector<Point>> minmax_downsampler(std::vector<Point> const& series, uint32_t threshold)
+    std::vector<Point> minmax_downsampler(std::vector<Point> const& series, uint32_t threshold)
     {
         if (series.empty() or threshold < 4)
         {
-            return std::unexpected(std::make_error_code(std::errc::invalid_argument));
+            throw std::system_error(EINVAL, std::generic_category());
         }
 
         uint32_t const n = static_cast<uint32_t>(series.size());
@@ -62,12 +62,12 @@ namespace rtm
         return std::abs((a.x - c.x) * (b.y - a.y) - (a.x - b.x) * (c.y - a.y)) * 0.5f;
     }
 
-    result<std::vector<Point>> lttb(std::vector<Point> const& serie, uint32_t threshold)
+    std::vector<Point> lttb(std::vector<Point> const& serie, uint32_t threshold)
     {
         // Validate input
         if (serie.empty() or threshold < 3)
         {
-            return std::unexpected(std::make_error_code(std::errc::invalid_argument));
+            throw std::system_error(EINVAL, std::generic_category());
         }
 
         // If threshold is greater than or equal to data size, return original data
@@ -154,22 +154,12 @@ namespace rtm
     }
 
 
-    result<std::vector<Point>> minmax_lttb(std::vector<Point> const& series, uint32_t threshold)
+    std::vector<Point> minmax_lttb(std::vector<Point> const& series, uint32_t threshold)
     {
         // 1. min–max preselection
         auto preselect = minmax_downsampler(series, threshold * 4);
-        if (not preselect)
-        {
-            return std::unexpected(preselect.error());
-        }
 
         // 2. LTTB
-        auto l = lttb(*preselect, threshold);
-        if (not l)
-        {
-            return std::unexpected(l.error());
-        }
-
-        return l;
+        return lttb(preselect, threshold);
     }
 }

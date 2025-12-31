@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdlib>
 #include <cmath>
 #include <implot.h>
@@ -77,13 +78,10 @@ namespace rtm
 
         split_serie(sections_, raw_serie);
 
-        //auto rc_diffs = minmax_downsampler(diffs_full_, DECIMATION);
-        auto rc_downampled = lttb(raw_serie, DECIMATION);
-        //auto rc_diffs = minmax_lttb(diffs_full_, DECIMATION);
-        if (rc_downampled)
-        {
-            serie_ = *rc_downampled;
-        }
+        //serie_ = minmax_downsampler(diffs_full_, DECIMATION);
+        serie_ = lttb(raw_serie, DECIMATION);
+        //serie_ = minmax_lttb(diffs_full_, DECIMATION);
+
         if (serie_.size() != raw_serie.size())
         {
             is_downsampled_ = true;

@@ -4,6 +4,6 @@
         "conan": {}
     },
     "include": [
-        "build/gcc-15-x86_64-23-release/generators/CMakePresets.json"
+        "build/gcc-15.2-x86_64-23-release/generators/CMakePresets.json"
     ]
 }
