@@ -21,19 +21,14 @@ namespace rtm
         close();
     }
 
-    int64_t File::read(void* buffer, int64_t size)
+    int64_t File::read(void* data, int64_t data_size)
     {
-        return ::read(fd_, buffer, size);
-        //return static_cast<int64_t>(rc);
+        return ::read(fd_, data, static_cast<std::size_t>(data_size));
     }
 
-    void File::write(void const* buffer, int64_t size)
+    int64_t File::write(void const* data, int64_t data_size)
     {
-        ssize_t rc = ::write(fd_, buffer, size);
-        if (rc < 0)
-        {
-            throw std::system_error(errno, std::generic_category());
-        }
+        return ::write(fd_, data, static_cast<std::size_t>(data_size));
     }
 
     std::error_code File::do_open(access::Mode access)

@@ -16,7 +16,7 @@ namespace rtm
         virtual ~File();
 
         int64_t read(void* data, int64_t data_size) override;
-        void write(void const* data, int64_t data_size) override;
+        int64_t write(void const* data, int64_t data_size) override;
         std::error_code seek(int64_t pos) override;
 
     private:

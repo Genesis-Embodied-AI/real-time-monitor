@@ -51,7 +51,7 @@ namespace rtm
         bool is_blocking() const;
 
         virtual int64_t read(void* data, int64_t data_size) = 0;
-        virtual void write(void const* data, int64_t data_size) = 0;
+        virtual int64_t write(void const* data, int64_t data_size) = 0;
         virtual std::error_code seek(int64_t pos);
 
     protected:
