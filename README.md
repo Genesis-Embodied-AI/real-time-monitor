@@ -2,7 +2,7 @@
 A monitor (GUI + probe) to inspect the real-time behavior of your code
 
 A few dependencies are required for building:
-- the monitor
+- the GUI
 - the units test
 
 To do so, you can either install them by calling conan directly or by using the helper script setup_build.sh
@@ -15,7 +15,7 @@ This project uses [Conan](https://conan.io/) to manage its dependencies.
 
 - [Conan](https://conan.io/downloads.html) (>= 2.10)
 - CMake (>= 3.28)
-- GCC C/C++ compiler >= 13 (clang is not officially supported but it should works)
+- C++17 compatible compiler (recommended GCC C/C++ compiler >= 13, clang is not officially supported but it should works)
 
 ### Installing Dependencies
 

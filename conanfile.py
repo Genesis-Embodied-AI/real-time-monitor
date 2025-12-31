@@ -11,7 +11,7 @@ required_conan_version = ">=2.10"
 
 class RealTimeMonitorRecipe(ConanFile):
     name = "real-time-monitor"
-    version = "0.1.0"
+    version = "0.1.3"
     url = "https://github.com/Genesis-Embodied-AI/real-time-monitor"
     homepage = "https://github.com/Genesis-Embodied-AI/real-time-monitor"
     description = "A real time probe/monitor to debug your software"
@@ -37,7 +37,7 @@ class RealTimeMonitorRecipe(ConanFile):
 
     def validate(self):
         if self.settings.compiler.get_safe("cppstd"):
-            check_min_cppstd(self, 23)
+            check_min_cppstd(self, 17)
 
         if self.settings.os not in ["Linux"]:
             raise ConanInvalidConfiguration(

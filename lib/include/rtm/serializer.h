@@ -1,7 +1,7 @@
 #ifndef RTM_LIB_SERIALIZER_H
 #define RTM_LIB_SERIALIZER_H
 
-#include <concepts>
+#include <type_traits>
 #include <cstdint>
 #include <cstring>
 #include <string_view>
@@ -11,11 +11,11 @@ namespace rtm
 {
     // Note: standard layout is not mandatory but gere we want to ensure predictable layout
     template <typename T>
-    concept memcpy_compatible = std::is_trivially_copyable_v<T> and std::is_standard_layout_v<T>;
+    constexpr bool memcpy_compatible_v = std::is_trivially_copyable_v<T> and std::is_standard_layout_v<T>;
 
     // Helper to extract data from memory
-    template <memcpy_compatible T>
-    T extract_data(uint8_t const*& pos)
+    template <typename T>
+    std::enable_if_t<memcpy_compatible_v<T>, T> extract_data(uint8_t const*& pos)
     {
         T data;
         std::memcpy(&data, pos, sizeof(T));

@@ -3,6 +3,7 @@
 
 #include <array>
 #include <chrono>
+#include <memory>
 #include <string>
 
 #include "rtm/commands.h"
