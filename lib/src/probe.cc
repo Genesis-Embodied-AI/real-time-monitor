@@ -20,7 +20,7 @@ namespace rtm
 
     void Probe::init(std::string_view process, std::string_view task_name,
                          nanoseconds process_start_time, nanoseconds task_period, uint32_t task_priority,
-                         std::unique_ptr<AbstractWriteIO> io)
+                         std::unique_ptr<AbstractIO> io)
     {
         constexpr uint16_t PROTOCOL_VERSION = 1;
         constexpr uint8_t PADDING[6] = {0};

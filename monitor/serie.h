@@ -5,12 +5,11 @@
 #include <unordered_map>
 
 #include "rtm/data.h"
-#include "rtm/time_wrapper.h"
+#include "rtm/os/time.h"
 
 namespace rtm
 {
     ImVec4 generate_random_color();
-    std::string format_iso_timestamp(nanoseconds timestamp);
 
     struct Statistics
     {

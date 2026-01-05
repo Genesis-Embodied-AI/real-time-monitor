@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "rtm/parser.h"
+#include "rtm/io/file.h"
 
 #include "main_window.h"
 
@@ -23,7 +24,8 @@ namespace rtm
 
         for (auto const& entry : detected_files)
         {
-            auto io = std::make_unique<rtm::FileRead>(entry.c_str());
+            auto io = std::make_unique<rtm::File>(entry.c_str());
+            io->open(access::Mode::READ_ONLY);
             Parser p{std::move(io)};
             p.load_header();
             p.print_header();

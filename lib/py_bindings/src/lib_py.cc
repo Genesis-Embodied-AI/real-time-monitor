@@ -5,10 +5,11 @@
 #include <nanobind/trampoline.h>
 #include <nanobind/stl/unique_ptr.h>
 
-#include "rtm/io.h"
 #include "rtm/parser.h"
 #include "rtm/probe.h"
-#include "rtm/time_wrapper.h"
+#include "rtm/io/file.h"
+#include "rtm/io/posix/local_socket.h"
+#include "rtm/os/time.h"
 
 namespace nb = nanobind;
 using namespace nb::literals;
@@ -32,7 +33,7 @@ namespace rtm
     {
         nb::class_<Probe>(m, "Probe")
             .def(nb::init<>())
-            .def("init", [](Probe& self, char const* output_file, char const* process, char const* task,
+            .def("init", [](Probe& self, char const* process, char const* task,
                             uint32_t period_ms, uint32_t priority, int64_t start_time_ns)
                 {
 
@@ -46,12 +47,17 @@ namespace rtm
                         start = start_time();
                     }
 
-                    auto io = std::make_unique<rtm::FileWrite>(output_file);
+                    auto io = std::make_unique<rtm::LocalSocket>();
+                    auto rc = io->open(rtm::access::Mode::READ_WRITE);
+                    if (rc)
+                    {
+                        throw std::runtime_error("Cannot connect ot the recorder");
+                    }
+
                     self.init(process, task,
                         start, milliseconds{period_ms}, priority,
                         std::move(io));
-                }, "output_file"_a,
-                   "process"_a, "task"_a,
+                }, "process"_a, "task"_a,
                    "period_ms"_a, "priority"_a,
                    "start_time_ns"_a = -1)
             .def("log", [](Probe& self)
@@ -72,7 +78,13 @@ namespace rtm
         nb::class_<Parser>(m, "Parser")
             .def(nb::new_([](std::string const& file_path)
                 {
-                    auto io = std::make_unique<FileRead>(file_path.c_str());
+                    auto io = std::make_unique<File>(file_path.c_str());
+                    auto rc = io->open(access::Mode::READ_ONLY);
+                    if (rc)
+                    {
+                        throw std::runtime_error("Cannot open file");
+                    }
+
                     auto p = std::make_unique<Parser>(std::move(io));
                     p->load_header();
                     if (not p->load_samples())

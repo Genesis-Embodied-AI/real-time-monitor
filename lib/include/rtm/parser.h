@@ -9,8 +9,8 @@
 #include "rtm/commands.h"
 #include "rtm/data.h"
 #include "rtm/error.h"
-#include "rtm/io.h"
-#include "rtm/time_wrapper.h"
+#include "rtm/io/io.h"
+#include "rtm/os/time.h"
 
 namespace rtm
 {
@@ -28,7 +28,7 @@ namespace rtm
     class Parser
     {
     public:
-        Parser(std::unique_ptr<AbstractReadIO> io);
+        Parser(std::unique_ptr<AbstractIO> io);
         ~Parser() = default;
 
         void load_header();
@@ -53,7 +53,7 @@ namespace rtm
         milliseconds_f up_max() const;      // only available after a call to generate_times_up
 
     private:
-        std::unique_ptr<AbstractReadIO> io_;
+        std::unique_ptr<AbstractIO> io_;
 
         TickHeader header_;
         nanoseconds begin_{-1ns};
