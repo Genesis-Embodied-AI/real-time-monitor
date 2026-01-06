@@ -15,7 +15,10 @@ namespace rtm
 
     Probe::~Probe()
     {
-        flush();
+        if (io_ != nullptr)
+        {
+            flush();
+        }
     }
 
     void Probe::init(std::string_view process, std::string_view task_name,

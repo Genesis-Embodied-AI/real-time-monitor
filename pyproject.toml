@@ -33,19 +33,20 @@ BUILD_TOOLS = "OFF"
 build-verbosity = 1
 manylinux-x86_64-image = "manylinux_2_28"
 build = ["cp310-*", "cp311-*", "cp312-*"]
+skip = ["cp310-musllinux*", "cp311-musllinux*", "cp312-musllinux*"]
 
 [[tool.cibuildwheel.overrides]]
 # nanobind does not support Stable ABI for Python < 3.12 - Linux
 select = "cp3{10,11}-*linux*"
 config-settings = { "cmake.define.CMAKE_CI_BUILD" = true, "cmake.define.CMAKE_FIND_ROOT_PATH" = "/tmp/rtm_build_config", "cmake.define.CMAKE_TOOLCHAIN_FILE" = "/tmp/rtm_build_config/toolchain.cmake" }
 repair-wheel-command = [
-  "auditwheel repair --zip-compression-level=9 -w {dest_dir} {wheel}"
+  "auditwheel repair --zip-compression-level=9 --exclude libGLX.so.0 --exclude libOpenGL.so.0 --exclude libGLdispatch.so.0 -w {dest_dir} {wheel}"
 ]
 
 [[tool.cibuildwheel.overrides]]
 # nanobind does not support Stable ABI for Python < 3.12 - macOS
 select = "cp3{10,11}-macosx*"
-config-settings = { "cmake.define.CMAKE_CI_BUILD" = true, "cmake.define.CMAKE_OSX_DEPLOYMENT_TARGET" = "10.15" }
+config-settings = { "cmake.define.CMAKE_CI_BUILD" = true, "cmake.define.CMAKE_OSX_DEPLOYMENT_TARGET" = "10.15", "cmake.define.CMAKE_FIND_ROOT_PATH" = "/tmp/rtm_build_config", "cmake.define.CMAKE_TOOLCHAIN_FILE" = "/tmp/rtm_build_config/toolchain.cmake" }
 repair-wheel-command = [
   "delocate-wheel -w {dest_dir} {wheel}"
 ]
@@ -62,10 +63,11 @@ CMAKE_TOOLCHAIN_FILE = "/tmp/rtm_build_config/toolchain.cmake"
 before-all = [
   'pipx install conan',
   './setup_build.sh /tmp/rtm_build_config',
-  'source tools/setup/version.sh && sed -i "s/0\.0\.0/${VERSION}/g" pyproject.toml'
+  'source tools/setup/version.sh && sed -i "s/0\.0\.0/${VERSION}/g" pyproject.toml',
+  'dnf install -y libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel wayland-devel libxkbcommon-devel' # For build on manylinux_2_28 - which uses AlmaLinux 8
 ]
 repair-wheel-command = [
-  "auditwheel repair --zip-compression-level=9 -w {dest_dir} {wheel}",
+  "auditwheel repair --zip-compression-level=9 --exclude libGLX.so.0 --exclude libOpenGL.so.0 --exclude libGLdispatch.so.0 -w {dest_dir} {wheel}",
   "pipx run abi3audit --strict --report {wheel}",
 ]
 

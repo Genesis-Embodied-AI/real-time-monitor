@@ -1,4 +1,5 @@
-// Dear ImGui: standalone example application for OSX + Metal.
+// Dear ImGui: standalone example application for GLFW + Metal, using programmable pipeline
+// (GLFW is a cross-platform general purpose library for handling windows, inputs, OpenGL/Vulkan/Metal graphics context creation, etc.)
 
 // Learn about Dear ImGui:
 // - FAQ                  https://dearimgui.com/faq
@@ -6,82 +7,82 @@
 // - Documentation        https://dearimgui.com/docs (same as your local docs/ folder).
 // - Introduction, links and more at the top of imgui.cpp
 
-#import <Foundation/Foundation.h>
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_metal.h>
+#include <implot.h>
+#include <stdio.h>
 
-#if TARGET_OS_OSX
-#import <Cocoa/Cocoa.h>
-#else
-#import <UIKit/UIKit.h>
-#endif
+#define GLFW_INCLUDE_NONE
+#define GLFW_EXPOSE_NATIVE_COCOA
+#include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
 
 #import <Metal/Metal.h>
-#import <MetalKit/MetalKit.h>
-
-#include "imgui.h"
-#include "imgui_impl_metal.h"
-#if TARGET_OS_OSX
-#include "imgui_impl_osx.h"
-@interface AppViewController : NSViewController<NSWindowDelegate>
-@end
-#else
-@interface AppViewController : UIViewController
-@end
-#endif
+#import <QuartzCore/QuartzCore.h>
 
 #include "main_window.h"
 
-ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-rtm::MainWindow main_window;
-
-@interface AppViewController () <MTKViewDelegate>
-@property (nonatomic, readonly) MTKView *mtkView;
-@property (nonatomic, strong) id <MTLDevice> device;
-@property (nonatomic, strong) id <MTLCommandQueue> commandQueue;
-@end
-
-//-----------------------------------------------------------------------------------
-// AppViewController
-//-----------------------------------------------------------------------------------
-
-@implementation AppViewController
-
--(instancetype)initWithNibName:(nullable NSString *)nibNameOrNil bundle:(nullable NSBundle *)nibBundleOrNil
+static void glfw_error_callback(int error, const char* description)
 {
-    self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil];
+    fprintf(stderr, "Glfw Error %d: %s\n", error, description);
+}
 
-    _device = MTLCreateSystemDefaultDevice();
-    _commandQueue = [_device newCommandQueue];
-
-    if (!self.device)
+int main(int argc, char* argv[])
+{
+    glfwSetErrorCallback(glfw_error_callback);
+    if (not glfwInit())
     {
-        NSLog(@"Metal is not supported");
-        abort();
+        return 1;
+    }
+
+    // Create window with graphics context
+    float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor()); // Valid on GLFW 3.3+ only
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    GLFWwindow* window = glfwCreateWindow((int)(1280 * main_scale), (int)(800 * main_scale), "Real Time Monitor", nullptr, nullptr);
+    if (window == nullptr)
+    {
+        return 1;
     }
 
     // Setup Dear ImGui context
-    // FIXME: This example doesn't have proper cleanup...
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+    ImPlot::CreateContext();
+
+    {
+        ImGuiIO& io = ImGui::GetIO(); (void)io;
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+    }
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
     //ImGui::StyleColorsLight();
 
-    // Setup Renderer backend
-    ImGui_ImplMetal_Init(_device);
+    // Setup scaling
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.ScaleAllSizes(main_scale);        // Bake a fixed style scale. (until we have a solution for dynamic style scaling, changing this requires resetting Style + calling this again)
+    style.FontScaleDpi = main_scale;        // Set initial font scale. (using io.ConfigDpiScaleFonts=true makes this unnecessary. We leave both here for documentation purpose)
+
+    id <MTLDevice> device = MTLCreateSystemDefaultDevice();
+    id <MTLCommandQueue> commandQueue = [device newCommandQueue];
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplMetal_Init(device);
 
     // Load Fonts
-    // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
-    // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
-    // - If the file cannot be loaded, the function will return a nullptr. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
-    // - Use '#define IMGUI_ENABLE_FREETYPE' in your imconfig file to use Freetype for higher quality font rendering.
-    // - Read 'docs/FONTS.md' for more instructions and details. If you like the default font but want it to scale better, consider using the 'ProggyVector' from the same author!
+    // - If fonts are not explicitly loaded, Dear ImGui will call AddFontDefault() to select an embedded font: either AddFontDefaultVector() or AddFontDefaultBitmap().
+    //   This selection is based on (style.FontSizeBase * style.FontScaleMain * style.FontScaleDpi) reaching a small threshold.
+    // - You can load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
+    // - If a file cannot be loaded, AddFont functions will return a nullptr. Please handle those errors in your code (e.g. use an assertion, display an error and quit).
+    // - Read 'docs/FONTS.md' for more instructions and details.
+    // - Use '#define IMGUI_ENABLE_FREETYPE' in your imconfig file to use FreeType for higher quality font rendering.
     // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
     //style.FontSizeBase = 20.0f;
-    //io.Fonts->AddFontDefault();
+    //io.Fonts->AddFontDefaultVector();
+    //io.Fonts->AddFontDefaultBitmap();
     //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf");
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf");
     //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf");
@@ -89,256 +90,92 @@ rtm::MainWindow main_window;
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf");
     //IM_ASSERT(font != nullptr);
 
-    return self;
-}
+    NSWindow *nswin = glfwGetCocoaWindow(window);
+    CAMetalLayer *layer = [CAMetalLayer layer];
+    layer.device = device;
+    layer.pixelFormat = MTLPixelFormatBGRA8Unorm;
+    nswin.contentView.layer = layer;
+    nswin.contentView.wantsLayer = YES;
 
--(MTKView *)mtkView
-{
-    return (MTKView *)self.view;
-}
+    MTLRenderPassDescriptor *renderPassDescriptor = [MTLRenderPassDescriptor new];
 
--(void)loadView
-{
-    self.view = [[MTKView alloc] initWithFrame:CGRectMake(0, 0, 1200, 800)];
-}
+    // Our state
+    float clear_color[4] = {0.45f, 0.55f, 0.60f, 1.00f};
 
--(void)viewDidLoad
-{
-    [super viewDidLoad];
-
-    self.mtkView.device = self.device;
-    self.mtkView.delegate = self;
-
-#if TARGET_OS_OSX
-    ImGui_ImplOSX_Init(self.view);
-    [NSApp activateIgnoringOtherApps:YES];
-#endif
-}
-
--(void)drawInMTKView:(MTKView*)view
-{
-    ImGuiIO& io = ImGui::GetIO();
-    io.DisplaySize.x = view.bounds.size.width;
-    io.DisplaySize.y = view.bounds.size.height;
-
-#if TARGET_OS_OSX
-    CGFloat framebufferScale = view.window.screen.backingScaleFactor ?: NSScreen.mainScreen.backingScaleFactor;
-#else
-    CGFloat framebufferScale = view.window.screen.scale ?: UIScreen.mainScreen.scale;
-#endif
-    io.DisplayFramebufferScale = ImVec2(framebufferScale, framebufferScale);
-
-    id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
-
-    MTLRenderPassDescriptor* renderPassDescriptor = view.currentRenderPassDescriptor;
-    if (renderPassDescriptor == nil)
+    rtm::MainWindow main_window;
+    if (argc == 1)
     {
-        [commandBuffer commit];
-        return;
+        main_window.load_dataset(".");
+    }
+    else
+    {
+        main_window.load_dataset(argv[1]);
     }
 
-    // Start the Dear ImGui frame
-    ImGui_ImplMetal_NewFrame(renderPassDescriptor);
-#if TARGET_OS_OSX
-    ImGui_ImplOSX_NewFrame(view);
-#endif
-    ImGui::NewFrame();
-
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::SetNextWindowPos(viewport->WorkPos);
-    ImGui::SetNextWindowSize(viewport->WorkSize);
-
-    ImGui::Begin("ImGraph",
-                nullptr,
-                ImGuiWindowFlags_NoTitleBar |
-                ImGuiWindowFlags_NoResize   |
-                ImGuiWindowFlags_NoMove     |
-                ImGuiWindowFlags_NoCollapse);
-
-    main_window.draw();
-
-    ImGui::End();
-
-    // Rendering
-    ImGui::Render();
-    ImDrawData* draw_data = ImGui::GetDrawData();
-
-    renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
-    id <MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
-    [renderEncoder pushDebugGroup:@"Dear ImGui rendering"];
-    ImGui_ImplMetal_RenderDrawData(draw_data, commandBuffer, renderEncoder);
-    [renderEncoder popDebugGroup];
-    [renderEncoder endEncoding];
-
-    // Present
-    [commandBuffer presentDrawable:view.currentDrawable];
-    [commandBuffer commit];
-}
-
--(void)mtkView:(MTKView*)view drawableSizeWillChange:(CGSize)size
-{
-}
-
-//-----------------------------------------------------------------------------------
-// Input processing
-//-----------------------------------------------------------------------------------
-
-#if TARGET_OS_OSX
-
-- (void)viewWillAppear
-{
-    [super viewWillAppear];
-    self.view.window.delegate = self;
-}
-
-- (void)windowWillClose:(NSNotification *)notification
-{
-    ImGui_ImplMetal_Shutdown();
-    ImGui_ImplOSX_Shutdown();
-    ImGui::DestroyContext();
-}
-
-#else
-
-// This touch mapping is super cheesy/hacky. We treat any touch on the screen
-// as if it were a depressed left mouse button, and we don't bother handling
-// multitouch correctly at all. This causes the "cursor" to behave very erratically
-// when there are multiple active touches. But for demo purposes, single-touch
-// interaction actually works surprisingly well.
--(void)updateIOWithTouchEvent:(UIEvent *)event
-{
-    UITouch *anyTouch = event.allTouches.anyObject;
-    CGPoint touchLocation = [anyTouch locationInView:self.view];
-    ImGuiIO &io = ImGui::GetIO();
-    io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
-    io.AddMousePosEvent(touchLocation.x, touchLocation.y);
-
-    BOOL hasActiveTouch = NO;
-    for (UITouch *touch in event.allTouches)
+    // Main loop
+    while (not glfwWindowShouldClose(window))
     {
-        if (touch.phase != UITouchPhaseEnded && touch.phase != UITouchPhaseCancelled)
+        @autoreleasepool
         {
-            hasActiveTouch = YES;
-            break;
+            // Poll and handle events (inputs, window resize, etc.)
+            // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
+            // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
+            // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
+            // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
+            glfwPollEvents();
+
+            int width, height;
+            glfwGetFramebufferSize(window, &width, &height);
+            layer.drawableSize = CGSizeMake(width, height);
+            id<CAMetalDrawable> drawable = [layer nextDrawable];
+
+            id<MTLCommandBuffer> commandBuffer = [commandQueue commandBuffer];
+            renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(clear_color[0] * clear_color[3], clear_color[1] * clear_color[3], clear_color[2] * clear_color[3], clear_color[3]);
+            renderPassDescriptor.colorAttachments[0].texture = drawable.texture;
+            renderPassDescriptor.colorAttachments[0].loadAction = MTLLoadActionClear;
+            renderPassDescriptor.colorAttachments[0].storeAction = MTLStoreActionStore;
+            id <MTLRenderCommandEncoder> renderEncoder = [commandBuffer renderCommandEncoderWithDescriptor:renderPassDescriptor];
+            [renderEncoder pushDebugGroup:@"ImGui demo"];
+
+            // Start the Dear ImGui frame
+            ImGui_ImplMetal_NewFrame(renderPassDescriptor);
+            ImGui_ImplGlfw_NewFrame();
+            ImGui::NewFrame();
+
+            auto* viewport = ImGui::GetMainViewport();
+            ImGui::SetNextWindowPos(viewport->WorkPos);
+            ImGui::SetNextWindowSize(viewport->WorkSize);
+
+            ImGui::Begin("ImGraph",
+                        nullptr,
+                        ImGuiWindowFlags_NoTitleBar |
+                        ImGuiWindowFlags_NoResize   |
+                        ImGuiWindowFlags_NoMove     |
+                        ImGuiWindowFlags_NoCollapse);
+
+            main_window.draw();
+
+            ImGui::End();
+
+            // Rendering
+            ImGui::Render();
+            ImGui_ImplMetal_RenderDrawData(ImGui::GetDrawData(), commandBuffer, renderEncoder);
+
+            [renderEncoder popDebugGroup];
+            [renderEncoder endEncoding];
+
+            [commandBuffer presentDrawable:drawable];
+            [commandBuffer commit];
         }
     }
-    io.AddMouseButtonEvent(0, hasActiveTouch);
-}
 
--(void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event      { [self updateIOWithTouchEvent:event]; }
--(void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event      { [self updateIOWithTouchEvent:event]; }
--(void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event  { [self updateIOWithTouchEvent:event]; }
--(void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event      { [self updateIOWithTouchEvent:event]; }
+    // Cleanup
+    ImGui_ImplMetal_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
-#endif
+    glfwDestroyWindow(window);
+    glfwTerminate();
 
-@end
-
-//-----------------------------------------------------------------------------------
-// AppDelegate
-//-----------------------------------------------------------------------------------
-
-#if TARGET_OS_OSX
-
-@interface AppDelegate : NSObject <NSApplicationDelegate>
-@property (nonatomic, strong) NSWindow *window;
-@end
-
-@implementation AppDelegate
-
--(BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender
-{
-    return YES;
-}
-
--(instancetype)init
-{
-    if (self = [super init])
-    {
-        NSViewController *rootViewController = [[AppViewController alloc] initWithNibName:nil bundle:nil];
-        self.window = [[NSWindow alloc] initWithContentRect:NSZeroRect
-                                                  styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable
-                                                    backing:NSBackingStoreBuffered
-                                                      defer:NO];
-        self.window.contentViewController = rootViewController;
-        [self.window center];
-        [self.window makeKeyAndOrderFront:self];
-    }
-    return self;
-}
-
-@end
-
-#else
-
-@interface AppDelegate : UIResponder <UIApplicationDelegate>
-@property (strong, nonatomic) UIWindow *window;
-@end
-
-@implementation AppDelegate
-
--(BOOL)application:(UIApplication *)application
-    didFinishLaunchingWithOptions:(NSDictionary<UIApplicationLaunchOptionsKey,id> *)launchOptions
-{
-    UIViewController *rootViewController = [[AppViewController alloc] init];
-    self.window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
-    self.window.rootViewController = rootViewController;
-    [self.window makeKeyAndVisible];
-    return YES;
-}
-
-@end
-
-#endif
-
-//-----------------------------------------------------------------------------------
-// Application main() function
-//-----------------------------------------------------------------------------------
-
-#if TARGET_OS_OSX
-
-int main(int argc, char* argv[])
-{
-    if (argc == 1)
-    {
-        main_window.load_dataset(".");
-    }
-    else
-    {
-        main_window.load_dataset(argv[1]);
-    }
-
-    @autoreleasepool
-    {
-        [NSApplication sharedApplication];
-        [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
-
-        AppDelegate *appDelegate = [[AppDelegate alloc] init];   // creates window
-        [NSApp setDelegate:appDelegate];
-
-        [NSApp activateIgnoringOtherApps:YES];
-        [NSApp run];
-    }
     return 0;
 }
-
-#else
-
-int main(int argc, char * argv[])
-{
-    if (argc == 1)
-    {
-        main_window.load_dataset(".");
-    }
-    else
-    {
-        main_window.load_dataset(argv[1]);
-    }
-
-    @autoreleasepool
-    {
-        return UIApplicationMain(argc, argv, nil, NSStringFromClass([AppDelegate class]));
-    }
-}
-
-#endif
