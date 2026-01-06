@@ -14,6 +14,9 @@ namespace rtm
         Recorder() = default;
         ~Recorder() = default;
 
+        Recorder(Recorder&& other) = default;
+        Recorder& operator=(Recorder&& other) = default;
+
         void add_client(std::unique_ptr<AbstractIO>&& io);
         void process();
 

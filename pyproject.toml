@@ -25,8 +25,8 @@ CMAKE_BUILD_WITH_INSTALL_RPATH = true
 CMAKE_INSTALL_RPATH = '$ORIGIN'
 CMAKE_INTERPROCEDURAL_OPTIMIZATION = true
 CMAKE_SHARED_LINKER_FLAGS_RELEASE = "-Wl,--gc-sections -Wl,--strip-all"
-BUILD_MONITOR = "OFF"
-BUILD_TOOLS = "OFF"
+BUILD_MONITOR = "ON"
+BUILD_TOOLS = "ON"
 
 [tool.cibuildwheel]
 # https://github.com/pypa/cibuildwheel/blob/main/docs/options.md

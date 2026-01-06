@@ -1,5 +1,6 @@
-add_executable(recorder main.cc)
-target_link_libraries(recorder PRIVATE rtm)
+add_executable(rtm_recorder main.cc)
+target_link_libraries(rtm_recorder PRIVATE rtm)
 
-target_compile_options(recorder PRIVATE -fsanitize=address)
-target_link_options(recorder PRIVATE -fsanitize=address)
+if (SKBUILD)
+    install(TARGETS rtm_recorder DESTINATION ${SKBUILD_SCRIPTS_DIR})
+endif()
