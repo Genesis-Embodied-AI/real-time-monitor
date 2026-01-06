@@ -99,4 +99,15 @@ namespace rtm
 
         return {};
     }
+
+    std::error_code File::sync()
+    {
+        int rc = ::fsync(fd_);
+        if (rc < 0)
+        {
+            return from_errno(errno);
+        }
+
+        return {};
+    }
 }
