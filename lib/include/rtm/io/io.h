@@ -53,6 +53,7 @@ namespace rtm
         virtual int64_t read(void* data, int64_t data_size) = 0;
         virtual int64_t write(void const* data, int64_t data_size) = 0;
         virtual std::error_code seek(int64_t pos);
+        virtual std::error_code sync();
 
     protected:
         virtual std::error_code do_open(access::Mode mode) = 0;

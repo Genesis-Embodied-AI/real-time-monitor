@@ -47,6 +47,7 @@ if [[ "$OS" == "Darwin" ]]; then
     LIBCXX_NAME="libc++"
     SYSTEM_NAME="Darwin"
     SYSTEM_VAR="APPLE"
+    ARCH_NAME="armv8\|x86_64"
 else
     OS_NAME="Linux"
     COMPILER_NAME="gcc"
@@ -78,6 +79,14 @@ sed \
   -e "s|BINARY_PATH_CXX|$(command -v $GREATEST_CXX)|g" \
   "$TEMPLATE_CONAN_PROFILE" > "$OUTPUT_CONAN_PROFILE"
 
+if [[ "$OS" == "Darwin" ]]; then
+    echo "OSX_ARCH_VARIANTS=x86_64;arm64" >> "$OUTPUT_CONAN_PROFILE"
+
+    echo "" >> "$OUTPUT_CONAN_PROFILE"
+    echo "[platform_tool_requires]" >> "$OUTPUT_CONAN_PROFILE"
+    echo "cmake/[>=4.1.1]" >> "$OUTPUT_CONAN_PROFILE"
+fi
+cat $OUTPUT_CONAN_PROFILE
 
 # Prepare debug depencies only for local call, not in CI
 if [[ $CIBUILDWHEEL != "1" ]]; then

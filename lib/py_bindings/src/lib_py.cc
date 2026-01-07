@@ -7,6 +7,7 @@
 
 #include "rtm/parser.h"
 #include "rtm/probe.h"
+#include "rtm/recorder.h"
 #include "rtm/io/file.h"
 #include "rtm/io/posix/local_socket.h"
 #include "rtm/os/time.h"
@@ -78,7 +79,7 @@ namespace rtm
         nb::class_<Parser>(m, "Parser")
             .def(nb::new_([](std::string const& file_path)
                 {
-                    auto io = std::make_unique<File>(file_path.c_str());
+                    auto io = std::make_unique<File>(file_path);
                     auto rc = io->open(access::Mode::READ_ONLY);
                     if (rc)
                     {
@@ -102,8 +103,25 @@ namespace rtm
                 })
             .def("generate_times_up", [](Parser &p) {
                 return split_point_vector(p.generate_times_up());
-                })
-                ;
+                });
 
+        nb::class_<LocalListener>(m, "LocalListener")
+            .def(nb::new_([](std::string const& listening_path = DEFAULT_LISTENING_PATH)
+                {
+                    return LocalListener{listening_path};
+                }))
+            .def("listen", &LocalListener::listen);
+
+        nb::class_<Recorder>(m, "Recorder")
+            .def(nb::init<>())
+            .def("accept", [](Recorder& self, LocalListener& server)
+            {
+                auto io = server.accept(access::Mode::NON_BLOCKING);
+                if (io != nullptr)
+                {
+                    self.add_client(std::move(io));
+                }
+            })
+            .def("process", &Recorder::process);
     }
 }

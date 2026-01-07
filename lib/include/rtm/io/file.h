@@ -18,6 +18,7 @@ namespace rtm
         int64_t read(void* data, int64_t data_size) override;
         int64_t write(void const* data, int64_t data_size) override;
         std::error_code seek(int64_t pos) override;
+        std::error_code sync() override;
 
     private:
         std::error_code do_open(access::Mode) override;
