@@ -23,13 +23,18 @@ int main(int argc, char* argv[])
 {
     std::signal(SIGINT, signal_handler);
 
+    std::string recording_path = ".";
     std::string listening_path = DEFAULT_LISTENING_PATH;
-    if (argc == 2)
+    if (argc >= 2)
     {
-        listening_path = argv[1];
+        recording_path = argv[1];
+    }
+    if (argc >= 3)
+    {
+        listening_path = argv[2];
     }
 
-    Recorder recorder;
+    Recorder recorder{recording_path};
 
     LocalListener server(listening_path);
     auto rc = server.listen(1);

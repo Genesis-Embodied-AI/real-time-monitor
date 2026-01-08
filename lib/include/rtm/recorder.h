@@ -11,7 +11,8 @@ namespace rtm
     class Recorder
     {
     public:
-        Recorder() = default;
+        // output folder is created if it does not exist
+        Recorder(std::string_view recording_path);
         ~Recorder() = default;
 
         Recorder(Recorder&& other) = default;
@@ -35,6 +36,8 @@ namespace rtm
             std::vector<uint8_t> buffer{};
         };
         std::vector<Client> clients_{};
+
+        std::string recording_path_;
     };
 }
 

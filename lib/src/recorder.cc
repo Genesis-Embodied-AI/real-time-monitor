@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <filesystem>
 
 #include "recorder.h"
 #include "serializer.h"
@@ -10,6 +11,12 @@ namespace rtm
     Recorder::Client::~Client()
     {
         flush();
+    }
+
+    Recorder::Recorder(std::string_view recording_path)
+        : recording_path_{recording_path}
+    {
+        std::filesystem::create_directory(recording_path_);
     }
 
     void Recorder::Client::flush()
@@ -72,7 +79,8 @@ namespace rtm
                 std::string process_name = extract_string();
                 std::string source_name  = extract_string();
 
-                std::string filename = format_iso_timestamp(start_time);
+                std::string filename = recording_path_ + '/';
+                filename += format_iso_timestamp(start_time);
                 filename += '_';
                 filename += process_name;
                 filename += '_';
