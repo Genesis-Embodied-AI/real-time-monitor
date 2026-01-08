@@ -2,6 +2,7 @@
 #include <nanobind/stl/bind_vector.h>
 #include <nanobind/stl/chrono.h>
 #include <nanobind/stl/string.h>
+#include <nanobind/stl/string_view.h>
 #include <nanobind/trampoline.h>
 #include <nanobind/stl/unique_ptr.h>
 
@@ -106,14 +107,18 @@ namespace rtm
                 });
 
         nb::class_<LocalListener>(m, "LocalListener")
-            .def(nb::new_([](std::string const& listening_path = DEFAULT_LISTENING_PATH)
+            .def(nb::init<std::string_view>(), nb::arg("listening_path") = DEFAULT_LISTENING_PATH)
+            .def("listen", [](LocalListener& self, int backlog)
+            {
+                auto rc = self.listen(backlog);
+                if (rc)
                 {
-                    return LocalListener{listening_path};
-                }))
-            .def("listen", &LocalListener::listen);
+                    throw std::runtime_error(rc.message().c_str());
+                }
+            }, nb::arg("backlog") = 1);
 
         nb::class_<Recorder>(m, "Recorder")
-            .def(nb::init<>())
+            .def(nb::init<std::string_view>(), nb::arg("recording_path"))
             .def("accept", [](Recorder& self, LocalListener& server)
             {
                 auto io = server.accept(access::Mode::NON_BLOCKING);
