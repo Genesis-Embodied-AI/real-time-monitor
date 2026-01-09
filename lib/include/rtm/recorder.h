@@ -34,6 +34,7 @@ namespace rtm
             std::unique_ptr<AbstractIO> io{};
             std::unique_ptr<AbstractIO> sink{};
             std::vector<uint8_t> buffer{};
+            std::string name{};
         };
         std::vector<Client> clients_{};
 

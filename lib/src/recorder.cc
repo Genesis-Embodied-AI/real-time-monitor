@@ -4,6 +4,7 @@
 #include "recorder.h"
 #include "serializer.h"
 #include "io/file.h"
+#include "io/null.h"
 #include "os/time.h"
 
 namespace rtm
@@ -79,14 +80,29 @@ namespace rtm
                 std::string process_name = extract_string();
                 std::string source_name  = extract_string();
 
-                std::string filename = recording_path_ + '/';
-                filename += format_iso_timestamp(start_time);
-                filename += '_';
-                filename += process_name;
-                filename += '_';
-                filename += source_name;
-                filename += ".tick";
-                client.sink = std::make_unique<File>(filename);
+                client.name = recording_path_ + '/';
+                client.name += format_iso_timestamp(start_time);
+                client.name += '_';
+                client.name += process_name;
+                client.name += '_';
+                client.name += source_name;
+                client.name += ".tick";
+
+                auto it = std::find_if(clients_.begin(), clients_.end(),
+                    [&client](Client const& c)
+                    {
+                        return c.name == client.name;
+                    });
+                if (it != clients_.end())
+                {
+                    printf("[Recorder] !!! WARNING !!! Another client have the same name (%s)! Switching the sink to null IO\n", client.name.c_str());
+                    client.sink = std::make_unique<NullIO>();
+                }
+                else
+                {
+                    client.sink = std::make_unique<File>(client.name);
+                }
+
                 client.sink->open(access::Mode::WRITE_ONLY | access::Mode::TRUNCATE);
                 client.flush();
             }

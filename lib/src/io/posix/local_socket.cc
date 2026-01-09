@@ -78,7 +78,7 @@ namespace rtm
 
         if (mode & access::Mode::NON_BLOCKING)
         {
-            set_nonblocking(fd_);
+            set_nonblocking(socket_fd);
         }
 
         return std::make_unique<LocalSocket>(socket_fd, mode | access::Mode::READ_WRITE);
@@ -90,6 +90,7 @@ namespace rtm
     {
         fd_ = fd;
         modes_ = modes;
+        supported_modes_ = access::Mode::READ_WRITE | access::Mode::NON_BLOCKING;
     }
 
     LocalSocket::LocalSocket(std::string_view address)
