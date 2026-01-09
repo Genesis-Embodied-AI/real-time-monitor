@@ -80,18 +80,18 @@ namespace rtm
                 std::string process_name = extract_string();
                 std::string source_name  = extract_string();
 
-                client.name = recording_path_ + '/';
-                client.name += format_iso_timestamp(start_time);
-                client.name += '_';
-                client.name += process_name;
-                client.name += '_';
-                client.name += source_name;
-                client.name += ".tick";
+                std::string name = recording_path_ + '/';;
+                name += format_iso_timestamp(start_time);
+                name += '_';
+                name += process_name;
+                name += '_';
+                name += source_name;
+                name += ".tick";
 
                 auto it = std::find_if(clients_.begin(), clients_.end(),
-                    [&client](Client const& c)
+                    [&name](Client const& c)
                     {
-                        return c.name == client.name;
+                        return c.name == name;
                     });
                 if (it != clients_.end())
                 {
@@ -100,6 +100,7 @@ namespace rtm
                 }
                 else
                 {
+                    client.name = std::move(name);
                     client.sink = std::make_unique<File>(client.name);
                 }
 

@@ -2,7 +2,7 @@ import time
 from real_time_monitor import Probe
 
 p = Probe()
-p.init(output_file="test.tick", process="python", task="my_task", period_ms=1, priority=42)
+p.init(process="python", task="my_task", period_ms=1, priority=42)
 
 TARGET = 0.001  # 1 ms
 
