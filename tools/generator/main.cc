@@ -29,6 +29,24 @@ int main(int argc, char* argv[])
             START, 1ms, 42,
             std::move(io));
 
+    nanoseconds now = START + 20ms;
+    for (int i = 0; i < 100000; ++i)
+    {
+        nanoseconds tick = now + i * 1ms + (100 - rand() % 200) * 1us;
+        probe.log(tick);
+        probe.log(tick + (rand() % 500 + 50) * 1us);
+    }
+
+    now += 25min;
+    for (int i = 0; i < 100000; ++i)
+    {
+        nanoseconds tick = now + i * 1ms + (100 - rand() % 200) * 1us;
+        probe.log(tick);
+        probe.log(tick + (rand() % 500 + 50) * 1us);
+    }
+
+
+/*
     uint64_t period = 1;
     uint64_t save_period = 0;
     for (uint64_t i = 1; i < samples; i += period)
@@ -58,6 +76,7 @@ int main(int argc, char* argv[])
         probe.log(now);
         probe.log(now + (rand() % 500 + period * 50) * 1us);
     }
+        */
     probe.flush();
 
     return 0;

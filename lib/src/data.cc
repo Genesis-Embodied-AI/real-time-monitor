@@ -65,7 +65,7 @@ namespace rtm
     std::vector<Point> lttb(std::vector<Point> const& serie, uint32_t threshold)
     {
         // Validate input
-        if (serie.empty() or threshold < 3)
+        if (threshold < 3)
         {
             throw std::system_error(EINVAL, std::generic_category());
         }

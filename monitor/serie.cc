@@ -35,9 +35,12 @@ namespace rtm
             }
             else
             {
-                section.min = min;
-                section.max = max;
-                sections.emplace_back(std::move(section));
+                if (not section.points.empty())
+                {
+                    section.min = min;
+                    section.max = max;
+                    sections.emplace_back(std::move(section));
+                }
 
                 min += SECTION_SIZE;
                 max += SECTION_SIZE;
@@ -143,6 +146,11 @@ namespace rtm
 
     Statistics Serie::compute_statistics(double begin, double end) const
     {
+        if (sections_.empty())
+        {
+            return Statistics{};
+        }
+
         // Search first and last section to process
         auto it_first = std::find_if(sections_.begin(), sections_.end(), [&](Section const& s)
         {
