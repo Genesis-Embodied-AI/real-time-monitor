@@ -36,19 +36,8 @@ namespace rtm
         nb::class_<Probe>(m, "Probe")
             .def(nb::init<>())
             .def("init", [](Probe& self, char const* process, char const* task,
-                            uint32_t period_ms, uint32_t priority, int64_t start_time_ns)
+                            uint32_t period_ms, uint32_t priority, nanoseconds start)
                 {
-
-                    nanoseconds start;
-                    if (start_time_ns >= 0)
-                    {
-                        start = nanoseconds{start_time_ns};
-                    }
-                    else
-                    {
-                        start = start_time();
-                    }
-
                     auto io = std::make_unique<rtm::LocalSocket>();
                     auto rc = io->open(rtm::access::Mode::READ_WRITE);
                     if (rc)
@@ -61,7 +50,7 @@ namespace rtm
                         std::move(io));
                 }, "process"_a, "task"_a,
                    "period_ms"_a, "priority"_a,
-                   "start_time_ns"_a = -1)
+                   "start"_a = start_time())
             .def("log", [](Probe& self)
                 {
                     self.log();
