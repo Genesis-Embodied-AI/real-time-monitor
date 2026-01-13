@@ -50,7 +50,7 @@ namespace rtm
             if (read == 0)
             {
                 // client disconnection
-                printf("[Recorder] Client disconnected\n");
+                printf("[Recorder] Client disconnected (%s)\n", client.name.c_str());
                 client.io.reset();
             }
 
@@ -95,7 +95,7 @@ namespace rtm
                     });
                 if (it != clients_.end())
                 {
-                    printf("[Recorder] !!! WARNING !!! Another client have the same name (%s)! Switching the sink to null IO\n", client.name.c_str());
+                    printf("[Recorder] !!! WARNING !!! Another client have the same name (%s)! Switching the sink to null IO\n", name.c_str());
                     client.sink = std::make_unique<NullIO>();
                 }
                 else
