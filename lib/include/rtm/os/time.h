@@ -7,8 +7,8 @@
 namespace rtm
 {
     using namespace std::chrono;
-    using milliseconds_f = std::chrono::duration<float, std::milli>;
-    using seconds_f = std::chrono::duration<float>;
+    using milliseconds_f = std::chrono::duration<double, std::milli>;
+    using seconds_f = std::chrono::duration<double>;
 
     // return the time in ns since epoch
     nanoseconds since_epoch();

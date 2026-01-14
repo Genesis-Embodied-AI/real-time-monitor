@@ -13,11 +13,11 @@ namespace rtm
 
     struct Statistics
     {
-        float min;
-        float max;
-        float average;
-        float rms;
-        float standard_deviation;
+        double min;
+        double max;
+        double average;
+        double rms;
+        double standard_deviation;
     };
 
     class Serie

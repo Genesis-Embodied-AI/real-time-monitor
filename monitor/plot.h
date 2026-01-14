@@ -13,7 +13,7 @@ namespace rtm
     {
     public:
         Plot(std::string const& name, std::string const& legend);
-        void add_serie(Serie&& serie, milliseconds_f max_y, nanoseconds end);
+        void add_serie(Serie&& serie, milliseconds_f max_y, nanoseconds begin, nanoseconds end);
         void draw();
 
     private:
@@ -31,6 +31,7 @@ namespace rtm
         milliseconds_f max_y_{-1ns};
         bool is_downsampled_{false};
 
+        nanoseconds begin_{-1ns};
         nanoseconds end_{-1ns};           // end (X) of the plots
 
         bool show_stats_{false};

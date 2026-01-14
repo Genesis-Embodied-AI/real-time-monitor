@@ -12,11 +12,19 @@ namespace rtm
     }
 
 
-    void Plot::add_serie(Serie&& s, milliseconds_f max_y, nanoseconds end)
+    void Plot::add_serie(Serie&& s, milliseconds_f max_y, nanoseconds begin, nanoseconds end)
     {
         series_.emplace_back(std::move(s));
         max_y_ = std::max(max_y_, max_y);
-        end_ = std::max(end_, end);
+        if (begin_ < 0ns)
+        {
+            begin_ = begin;
+        }
+        else
+        {
+            begin_ = std::min(begin_, begin_);
+        }
+        end_   = std::max(end_, end);
     }
 
 
@@ -119,14 +127,14 @@ namespace rtm
         if (ImGui::BeginTabItem(name_.c_str()))
         {
             // Force a start with the full view
-            ImPlot::SetNextAxesLimits(0, seconds_f(end_).count(),
+            ImPlot::SetNextAxesLimits(seconds_f(begin_).count(), seconds_f(end_).count(),
                                       0, max_y_.count(),
                                       ImPlotCond_Once);
 
             if (ImGui::IsKeyPressed(ImGuiKey_Escape))
             {
                 // Full view on escape
-                ImPlot::SetNextAxesLimits(0, seconds_f(end_).count(),
+                ImPlot::SetNextAxesLimits(seconds_f(begin_).count(), seconds_f(end_).count(),
                                           0, max_y_.count(),
                                           ImPlotCond_Always);
             }

@@ -6,7 +6,7 @@ p.init(process="python", task="my_task", period_ms=1, priority=42)
 
 TARGET = 0.001  # 1 ms
 
-for i in range(10000):
+for i in range(400000):
     p.log_start()
     start = time.perf_counter()
 
@@ -23,4 +23,3 @@ for i in range(10000):
 
     # print outside computation to not alter the timing
     print(f"Iteration {i}, x={x}, actual={time.perf_counter() - start:.6f}s")
-
