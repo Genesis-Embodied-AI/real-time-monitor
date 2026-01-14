@@ -22,7 +22,7 @@ namespace rtm
         }
         else
         {
-            begin_ = std::min(begin_, begin_);
+            begin_ = std::min(begin_, begin);
         }
         end_   = std::max(end_, end);
     }
