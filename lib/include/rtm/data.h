@@ -10,8 +10,8 @@ namespace rtm
 {
     struct Point
     {
-        float x;
-        float y;
+        double x;
+        double y;
     };
 
     // Helper to downsample big series

@@ -25,8 +25,8 @@ namespace rtm
     void Serie::split_serie(std::vector<Section>& sections, std::vector<Point> const& flat)
     {
         Section section;
-        seconds_f min = 0min;
-        seconds_f max = SECTION_SIZE;
+        seconds_f min = seconds_f{flat.front().x};
+        seconds_f max = min + SECTION_SIZE;
         for (auto const& point : flat)
         {
             if (point.x < max.count())
@@ -62,7 +62,10 @@ namespace rtm
 
         nanoseconds t1 = since_epoch();
 
-        split_serie(sections_, raw_serie);
+        if (not raw_serie.empty())
+        {
+            split_serie(sections_, raw_serie);
+        }
 
         //serie_ = minmax_downsampler(diffs_full_, DECIMATION);
         serie_ = lttb(raw_serie, DECIMATION);
@@ -74,7 +77,7 @@ namespace rtm
         }
 
         nanoseconds t2 = since_epoch();
-        printf("loaded in %f ms (%ld)\n", duration_cast<milliseconds_f>(t2 - t1).count(), serie_.size());
+        printf("loaded in %f ms (%ld)\n", duration_cast<milliseconds_f>(t2 - t1).count(), raw_serie.size());
 
         name_   = name;
         color_  = color;
@@ -103,7 +106,7 @@ namespace rtm
         {
             auto it = std::find_if(sections_.begin(), sections_.end(), [&](Section const& s)
             {
-                return (s.min.count() >  limits.X.Min) and (s.max.count() >= limits.X.Max);
+                return (s.min.count() < (limits.X.Min + 1000)) or (s.max.count() > limits.X.Max);
             });
             if (it == sections_.end())
             {
@@ -215,8 +218,8 @@ namespace rtm
         Statistics stats;
 
         int range_size = 0;
-        float accumulated = 0;
-        float square_accumulated = 0;
+        double accumulated = 0;
+        double square_accumulated = 0;
         stats.min = first_section.front().y;
         stats.max = first_section.front().y;
 

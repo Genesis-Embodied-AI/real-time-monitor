@@ -36,8 +36,11 @@ namespace rtm
         nb::class_<Probe>(m, "Probe")
             .def(nb::init<>())
             .def("init", [](Probe& self, char const* process, char const* task,
-                            uint32_t period_ms, uint32_t priority, nanoseconds start)
+                            uint32_t period_ms, uint32_t priority, double start)
                 {
+                    // FIXME: nanobind autoconversion of float/datetime to std::chrono::duration is broken for scalar.
+                    // forcing scalar only for now
+                    nanoseconds start_ns = duration_cast<nanoseconds>(seconds_f{start});
                     auto io = std::make_unique<rtm::LocalSocket>();
                     auto rc = io->open(rtm::access::Mode::READ_WRITE);
                     if (rc)
@@ -46,11 +49,11 @@ namespace rtm
                     }
 
                     self.init(process, task,
-                        start, milliseconds{period_ms}, priority,
+                        start_ns, milliseconds{period_ms}, priority,
                         std::move(io));
                 }, "process"_a, "task"_a,
                    "period_ms"_a, "priority"_a,
-                   "start"_a = start_time())
+                   "start"_a = duration_cast<seconds_f>(start_time()).count())
             .def("log", [](Probe& self)
                 {
                     self.log();
