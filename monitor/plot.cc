@@ -4,6 +4,53 @@
 
 namespace rtm
 {
+    int time_formatter(double value, char* buff, int size, void* user_data)
+    {
+        double to_seconds = *static_cast<double*>(user_data);
+        value *= to_seconds;
+        double abs_value = std::abs(value);
+        int written = 0;
+
+        if (abs_value >= 31536000)  // Years (365 days)
+        {
+            written = snprintf(buff, size, "%.2fy", value / 31536000);
+        }
+        else if (abs_value >= 2592000)  // Months (30 days)
+        {
+            written = snprintf(buff, size, "%.1fmo", value / 2592000);
+        }
+        else if (abs_value >= 86400)  // Days
+        {
+            written = snprintf(buff, size, "%.1fd", value / 86400);
+        }
+        else if (abs_value >= 3600)  // Hours
+        {
+            written = snprintf(buff, size, "%.1fh", value / 3600);
+        }
+        else if (abs_value >= 60)  // Minutes
+        {
+            written = snprintf(buff, size, "%.1fmin", value / 60);
+        }
+        else if (abs_value >= 1)  // Seconds
+        {
+            written = snprintf(buff, size, "%.2fs", value);
+        }
+        else if (abs_value >= 1e-3)  // Milliseconds
+        {
+            written = snprintf(buff, size, "%.2fms", value * 1e3);
+        }
+        else if (abs_value >= 1e-6)  // Microseconds
+        {
+            written = snprintf(buff, size, "%.2fus", value * 1e6);
+        }
+        else  // Nanoseconds
+        {
+            written = snprintf(buff, size, "%.2fns", value * 1e9);
+        }
+
+        return written;
+    }
+
     Plot::Plot(std::string const& name, std::string const& legend)
         : name_{name}
         , legend_{legend}
@@ -149,7 +196,11 @@ namespace rtm
             is_downsampled_ = false;
             if (ImPlot::BeginPlot("##Plot", ImVec2(-1, -1), ImPlotFlags_Crosshairs))
             {
-                ImPlot::SetupAxes("time (s)", legend_.c_str());
+                double x_to_seconds = 1.0;      // X axis is in seconds
+                double y_to_seconds = 0.001;    // Y axis is in milliseconds
+
+                ImPlot::SetupAxisFormat(ImAxis_X1, time_formatter, &x_to_seconds);
+                ImPlot::SetupAxisFormat(ImAxis_Y1, time_formatter, &y_to_seconds);
 
                 compute_stats_on_view_update();
                 for (auto const& serie : series_)
