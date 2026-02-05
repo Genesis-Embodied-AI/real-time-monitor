@@ -19,10 +19,10 @@ namespace rtm
         ~Probe();
 
         void init(std::string_view process, std::string_view task_name,
-                  nanoseconds process_start_time, nanoseconds task_period, uint32_t task_priority,
+                  nanoseconds process_start_time, nanoseconds task_period, int32_t task_priority,
                   std::unique_ptr<AbstractIO> io);
 
-        void update_priority(uint32_t priority);
+        void update_priority(int32_t priority);
         void update_period(nanoseconds period);
         void log(nanoseconds timestamp = since_epoch());
         void flush();
@@ -31,7 +31,7 @@ namespace rtm
         void update_reference(nanoseconds new_ref);
 
         nanoseconds period_{};
-        uint32_t priority_{};
+        int32_t priority_{};
 
         // buffer to reduce write accesses
         static constexpr std::size_t MAX_SAMPLES = 10;

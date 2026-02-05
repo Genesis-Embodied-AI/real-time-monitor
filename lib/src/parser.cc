@@ -119,12 +119,12 @@ namespace rtm
 
                     if (raw_sample & Command::UPDATE_PRIORITY)
                     {
-                        if (not check_boundary(sizeof(uint32_t)))
+                        if (not check_boundary(sizeof(int32_t)))
                         {
                             available_bytes = refill();
                         }
 
-                        uint32_t new_priority = extract_data<uint32_t>(pos);
+                        int32_t new_priority = extract_data<int32_t>(pos);
                         //printf("  priority:   %d\n", new_priority);
                         continue;
                     }

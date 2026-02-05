@@ -22,7 +22,7 @@ namespace rtm
     }
 
     void Probe::init(std::string_view process, std::string_view task_name,
-                         nanoseconds process_start_time, nanoseconds task_period, uint32_t task_priority,
+                         nanoseconds process_start_time, nanoseconds task_period, int32_t task_priority,
                          std::unique_ptr<AbstractIO> io)
     {
         constexpr uint16_t PROTOCOL_VERSION = 1;
@@ -77,13 +77,13 @@ namespace rtm
         update_priority(task_priority);
     }
 
-    void Probe::update_priority(uint32_t priority)
+    void Probe::update_priority(int32_t priority)
     {
         priority_ = priority;
 
         constexpr uint32_t oob = ESCAPE | Command::UPDATE_PRIORITY;
         io_->write(&oob, sizeof(uint32_t));
-        io_->write(&priority_, sizeof(uint32_t));
+        io_->write(&priority_, sizeof(priority_));
     }
 
     void Probe::update_period(nanoseconds period)
@@ -104,7 +104,7 @@ namespace rtm
 
         constexpr uint32_t oob = ESCAPE | Command::UPDATE_REFERENCE;
         io_->write(&oob, sizeof(uint32_t));
-        io_->write(&raw_ref, sizeof(uint64_t));
+        io_->write(&raw_ref, sizeof(raw_ref));
     }
 
     void Probe::log(nanoseconds timestamp)
