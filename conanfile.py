@@ -11,7 +11,7 @@ required_conan_version = ">=2.10"
 
 class RealTimeMonitorRecipe(ConanFile):
     name = "real-time-monitor"
-    version = "0.1.3"
+    version = "0.1.10"
     url = "https://github.com/Genesis-Embodied-AI/real-time-monitor"
     homepage = "https://github.com/Genesis-Embodied-AI/real-time-monitor"
     description = "A real time probe/monitor to debug your software"
@@ -23,7 +23,7 @@ class RealTimeMonitorRecipe(ConanFile):
     default_options = {"shared": False, "fPIC": True}
 
     # Sources are located in the same place as this recipe, copy them to the recipe
-    exports_sources = "CMakeLists.txt", "lib/*", "cmake/*"
+    exports_sources = "CMakeLists.txt", "lib/*", "cmake/*", "py_bindings/*"
 
     # def source(self):
     #     get(self, **self.conan_data["sources"][self.version], strip_root=True)
