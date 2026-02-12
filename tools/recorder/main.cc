@@ -1,13 +1,12 @@
-
 #include <csignal>
 #include <atomic>
+#include <argparse/argparse.hpp>
 
 #include "rtm/recorder.h"
 #include "rtm/os/time.h"
 #include "rtm/io/posix/local_socket.h"
 
 using namespace rtm;
-
 
 std::atomic<bool> keep_running{true};
 
@@ -23,16 +22,34 @@ int main(int argc, char* argv[])
 {
     std::signal(SIGINT, signal_handler);
 
-    std::string recording_path = ".";
-    std::string listening_path = DEFAULT_LISTENING_PATH;
-    if (argc >= 2)
+    std::string recording_path;
+    std::string listening_path;
+
+    argparse::ArgumentParser parser("rtm_recorder", "Record real-time probe data to tick files.");
+    parser.add_argument("output")
+        .help("directory where recording files are written")
+        .default_value(std::string{"."})
+        .nargs(argparse::nargs_pattern::optional)
+        .store_into(recording_path);
+    parser.add_argument("-l", "--listen")
+        .help("path of the Unix socket to listen for probe connections")
+        .default_value(std::string{DEFAULT_LISTENING_PATH})
+        .store_into(listening_path);
+
+    try
     {
-        recording_path = argv[1];
+        parser.parse_args(argc, argv);
     }
-    if (argc >= 3)
+    catch (const std::runtime_error& e)
     {
-        listening_path = argv[2];
+        printf("%s\n", e.what());
+        printf("%s\n", parser.help().str().c_str());
+        return 1;
     }
+
+    printf("[Recorder] Starting\n");
+    printf("[Recorder] Recording to %s\n", recording_path.c_str());
+    printf("[Recorder] Listening to %s\n", listening_path.c_str());
 
     Recorder recorder{recording_path};
 

@@ -1,8 +1,20 @@
+import argparse
 import time
 from real_time_monitor import Probe
 
+parser = argparse.ArgumentParser(description="Real-time probe example (sends data to rtm_recorder).")
+parser.add_argument(
+    "--listening_path", "-l",
+    default=None,
+    help="Unix socket path where the recorder is listening (omit to use the default)",
+)
+args = parser.parse_args()
+
 p = Probe()
-p.init(process="python", task="my_task", period_ms=1, priority=42)
+if args.listening_path is not None:
+    p.init(process="python", task="my_task", period_ms=1, priority=42, listening_path=args.listening_path)
+else:
+    p.init(process="python", task="my_task", period_ms=1, priority=42)
 
 TARGET = 0.001  # 1 ms
 

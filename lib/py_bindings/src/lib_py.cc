@@ -36,13 +36,14 @@ namespace rtm
         nb::class_<Probe>(m, "Probe")
             .def(nb::init<>())
             .def("init", [](Probe& self, char const* process, char const* task,
-                            uint32_t period_ms, int32_t priority, nanoseconds start)
+                            uint32_t period_ms, int32_t priority, nanoseconds start,
+                            std::string_view listening_path)
                 {
-                    auto io = std::make_unique<rtm::LocalSocket>();
+                    auto io = std::make_unique<rtm::LocalSocket>(listening_path);
                     auto rc = io->open(rtm::access::Mode::READ_WRITE);
                     if (rc)
                     {
-                        throw std::runtime_error("Cannot connect ot the recorder");
+                        throw std::runtime_error("Cannot connect to the recorder");
                     }
 
                     self.init(process, task,
@@ -50,7 +51,8 @@ namespace rtm
                         std::move(io));
                 }, "process"_a, "task"_a,
                    "period_ms"_a, "priority"_a,
-                   "start"_a = start_time())
+                   "start"_a = start_time(),
+                   "listening_path"_a = DEFAULT_LISTENING_PATH)
             .def("log", [](Probe& self)
                 {
                     self.log();
