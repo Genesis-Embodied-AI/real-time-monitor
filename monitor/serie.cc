@@ -106,7 +106,7 @@ namespace rtm
         {
             auto it = std::find_if(sections_.begin(), sections_.end(), [&](Section const& s)
             {
-                return (s.min.count() < (limits.X.Min + 1000)) or (s.max.count() > limits.X.Max);
+                return (s.min.count() > limits.X.Min) and (s.max.count() >= limits.X.Max);
             });
             if (it == sections_.end())
             {
