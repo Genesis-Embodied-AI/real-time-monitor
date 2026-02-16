@@ -1,23 +1,61 @@
+#include <argparse/argparse.hpp>
 #include "rtm/probe.h"
+#include "rtm/io/file.h"
 #include "rtm/io/posix/local_socket.h"
 
 using namespace std::chrono;
 
 int main(int argc, char *argv[])
 {
-    if (argc != 2)
+    uint64_t samples;
+    std::string listening_path;
+    std::string output_path;
+
+    argparse::ArgumentParser parser("rtm_generator", "Generate dummy probe data.");
+    parser.add_argument("-s", "--samples")
+        .help("number of samples to generate")
+        .required()
+        .store_into(samples);
+
+    parser.add_argument("-l", "--listen")
+        .help("path of the Unix socket to connect to")
+        .default_value(std::string{rtm::DEFAULT_LISTENING_PATH})
+        .store_into(listening_path);
+
+    parser.add_argument("-o", "--output")
+        .help("output file path (used if --listen is not provided)")
+        .default_value(std::string{"test.tick"})
+        .store_into(output_path);
+
+    try
     {
-        printf("Usage: ./generator [samples]\n");
+        parser.parse_args(argc, argv);
+    }
+    catch (const std::runtime_error& e)
+    {
+        printf("%s\n", e.what());
+        printf("%s\n", parser.help().str().c_str());
         return 1;
     }
 
     constexpr nanoseconds START = 8'000'000s;
 
-    uint64_t samples = std::stoull(argv[1]);
     printf("Generate %ld samples\n", samples);
 
-    auto io = std::make_unique<rtm::LocalSocket>();
-    auto rc = io->open(rtm::access::Mode::READ_WRITE);
+    std::unique_ptr<rtm::AbstractIO> io;
+    rtm::access::Mode mode;
+    if (parser.is_used("--listen"))
+    {
+        io = std::make_unique<rtm::LocalSocket>(listening_path);
+        mode = rtm::access::Mode::READ_WRITE;
+    }
+    else
+    {
+        io = std::make_unique<rtm::File>(output_path);
+        mode = rtm::access::Mode::WRITE_ONLY | rtm::access::Mode::TRUNCATE;
+    }
+
+    auto rc = io->open(mode);
     if (rc)
     {
         printf("io open() error: %s\n", rc.message().c_str());
