@@ -46,7 +46,6 @@ namespace rtm
         if (access & access::Mode::READ_WRITE)
         {
             posix_flag |= O_RDWR;
-            posix_flag |= O_CREAT;
         }
         if (access & access::Mode::NON_BLOCKING)
         {
