@@ -62,15 +62,19 @@ namespace rtm
         uint8_t const* pos = buffer;
         int64_t available_bytes = 0;
 
-        auto refill = [&]()
+        auto refill = [&]() -> int64_t
         {
-
-            // move end of the buffer to the beginning (may overlap!)
-            std::size_t to_copy = available_bytes - (pos - buffer);
-            std::memcpy(buffer, pos, to_copy);
+            std::size_t remaining = available_bytes - (pos - buffer);
+            std::memcpy(buffer, pos, remaining);
             pos = buffer;
-            available_bytes = io_->read(buffer + to_copy, BUFFER_SIZE - to_copy);
-            return available_bytes;
+            int64_t newly_read = io_->read(buffer + remaining, BUFFER_SIZE - remaining);
+            if (newly_read > 0)
+            {
+                available_bytes = static_cast<int64_t>(remaining) + newly_read;
+                return available_bytes;
+            }
+            available_bytes = static_cast<int64_t>(remaining);
+            return 0;
         };
 
         auto check_boundary = [&](std::size_t up_to)
@@ -96,12 +100,11 @@ namespace rtm
                     {
                         if (not check_boundary(sizeof(uint64_t)))
                         {
-                            available_bytes = refill();
+                            refill();
                         }
 
                         last_reference = nanoseconds{extract_data<uint64_t>(pos)};
                         samples_.push_back(last_reference - header_.start_time);
-                        //printf("  last ref: %ld\n", last_reference.count());
                         continue;
                     }
 
@@ -109,11 +112,10 @@ namespace rtm
                     {
                         if (not check_boundary(sizeof(uint64_t)))
                         {
-                            available_bytes = refill();
+                            refill();
                         }
 
-                        nanoseconds new_period = nanoseconds{extract_data<uint64_t>(pos)};
-                        //printf("  period:   %ld\n", new_period.count());
+                        extract_data<uint64_t>(pos);
                         continue;
                     }
 
@@ -121,11 +123,10 @@ namespace rtm
                     {
                         if (not check_boundary(sizeof(int32_t)))
                         {
-                            available_bytes = refill();
+                            refill();
                         }
 
-                        int32_t new_priority = extract_data<int32_t>(pos);
-                        //printf("  priority:   %d\n", new_priority);
+                        extract_data<int32_t>(pos);
                         continue;
                     }
 

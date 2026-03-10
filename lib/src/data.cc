@@ -26,8 +26,8 @@ namespace rtm
         {
             uint32_t end = std::min(i + bucket_size, n);
 
-            float minY = std::numeric_limits<float>::infinity();
-            float maxY = -std::numeric_limits<float>::infinity();
+            double minY = std::numeric_limits<double>::infinity();
+            double maxY = -std::numeric_limits<double>::infinity();
             Point minP, maxP;
 
             for (uint32_t j = i; j < end; ++j)
@@ -55,11 +55,11 @@ namespace rtm
 
 
     // Helper function to calculate triangle area using three points
-    inline float calculate_triangle_area(Point const& a,
-                                         Point const& b,
-                                         Point const& c)
+    inline double calculate_triangle_area(Point const& a,
+                                          Point const& b,
+                                          Point const& c)
     {
-        return std::abs((a.x - c.x) * (b.y - a.y) - (a.x - b.x) * (c.y - a.y)) * 0.5f;
+        return std::abs((a.x - c.x) * (b.y - a.y) - (a.x - b.x) * (c.y - a.y)) * 0.5;
     }
 
     std::vector<Point> lttb(std::vector<Point> const& serie, uint32_t threshold)
@@ -84,7 +84,7 @@ namespace rtm
         sampled.push_back(serie.front());
 
         // Bucket size (excluding first and last points)
-        float const bucket_size = static_cast<float>(n - 2) / float(threshold - 2);
+        double const bucket_size = static_cast<double>(n - 2) / static_cast<double>(threshold - 2);
 
         uint32_t a = 0; // Initially point A is the first point
 
@@ -95,7 +95,7 @@ namespace rtm
             uint32_t const bucket_end   = static_cast<uint32_t>(std::floor(float(i + 1) * bucket_size)) + 1;
 
             // Calculate average point for next bucket (used as point C)
-            float avg_x = 0.0, avg_y = 0.0;
+            double avg_x = 0.0, avg_y = 0.0;
             uint32_t avg_range_start, avg_range_end;
 
             if (i < threshold - 3)
@@ -113,7 +113,7 @@ namespace rtm
 
             // Calculate average
             avg_range_end = std::min(avg_range_end, n);
-            float const avg_range_length = static_cast<float>(avg_range_end - avg_range_start);
+            double const avg_range_length = static_cast<double>(avg_range_end - avg_range_start);
 
             for (uint32_t j = avg_range_start; j < avg_range_end; ++j)
             {
@@ -127,13 +127,13 @@ namespace rtm
 
             // Find point in current bucket with largest triangle area
             uint32_t max_area_point = bucket_start;
-            float max_area = -1.0;
+            double max_area = -1.0;
 
             uint32_t const actual_bucket_end = std::min(bucket_end, n);
 
             for (uint32_t j = bucket_start; j < actual_bucket_end; ++j)
             {
-                float const area = calculate_triangle_area(serie[a], serie[j], avg_point);
+                double const area = calculate_triangle_area(serie[a], serie[j], avg_point);
 
                 if (area > max_area)
                 {

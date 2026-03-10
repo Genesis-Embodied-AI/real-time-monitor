@@ -29,22 +29,20 @@ namespace rtm
         seconds_f max = min + SECTION_SIZE;
         for (auto const& point : flat)
         {
-            if (point.x < max.count())
-            {
-                section.points.push_back(point);
-            }
-            else
+            while (point.x >= max.count())
             {
                 if (not section.points.empty())
                 {
                     section.min = min;
                     section.max = max;
                     sections.emplace_back(std::move(section));
+                    section = Section{};
                 }
 
                 min += SECTION_SIZE;
                 max += SECTION_SIZE;
             }
+            section.points.push_back(point);
         }
 
         if (not section.points.empty())
