@@ -9,10 +9,13 @@ namespace rtm
     class NullIO final : public AbstractIO
     {
     public:
-        NullIO() = default;
+        NullIO()
+        {
+            supported_modes_ = access::Mode::READ_ONLY | access::Mode::WRITE_ONLY | access::Mode::READ_WRITE;
+        }
         virtual ~NullIO() = default;
 
-        int64_t read(void*, int64_t) override { return 0; };
+        int64_t read(void*, int64_t) override { return 0; }
         int64_t write(void const*, int64_t) override { return 0; }
 
         std::error_code seek(int64_t) override { return {}; }

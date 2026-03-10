@@ -6,7 +6,8 @@
 
 namespace rtm
 {
-    using namespace std::chrono;
+    using std::chrono::nanoseconds;
+    using namespace std::chrono_literals;
     using milliseconds_f = std::chrono::duration<double, std::milli>;
     using seconds_f = std::chrono::duration<double>;
 

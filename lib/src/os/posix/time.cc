@@ -1,6 +1,8 @@
 #include "error.h"
 #include "os/time.h"
 
+using namespace std::chrono;
+
 namespace rtm
 {    
     void sleep(nanoseconds ns)

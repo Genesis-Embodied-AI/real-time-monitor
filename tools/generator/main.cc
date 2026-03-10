@@ -2,8 +2,20 @@
 #include "rtm/probe.h"
 #include "rtm/io/file.h"
 #include "rtm/io/posix/local_socket.h"
+#include "rtm/io/posix/tcp_socket.h"
+#include "rtm/io/posix/udp_socket.h"
 
 using namespace std::chrono;
+
+static std::pair<std::string, uint16_t> parse_host_port(std::string const& str)
+{
+    auto pos = str.rfind(':');
+    if (pos == std::string::npos)
+    {
+        return {"localhost", static_cast<uint16_t>(std::stoi(str))};
+    }
+    return {str.substr(0, pos), static_cast<uint16_t>(std::stoi(str.substr(pos + 1)))};
+}
 
 int main(int argc, char *argv[])
 {
@@ -27,6 +39,14 @@ int main(int argc, char *argv[])
         .default_value(std::string{"test.tick"})
         .store_into(output_path);
 
+    parser.add_argument("-t", "--tcp")
+        .help("connect via TCP to host:port")
+        .default_value(std::string{});
+
+    parser.add_argument("-u", "--udp")
+        .help("connect via UDP to host:port")
+        .default_value(std::string{});
+
     try
     {
         parser.parse_args(argc, argv);
@@ -42,15 +62,34 @@ int main(int argc, char *argv[])
 
     printf("Generate %ld samples\n", samples);
 
+    std::string tcp_target = parser.get<std::string>("--tcp");
+    std::string udp_target = parser.get<std::string>("--udp");
+
     std::unique_ptr<rtm::AbstractIO> io;
     rtm::access::Mode mode;
-    if (parser.is_used("--listen"))
+    if (parser.is_used("--tcp"))
     {
+        auto [host, port] = parse_host_port(tcp_target);
+        printf("Connecting via TCP to %s:%u\n", host.c_str(), port);
+        io = std::make_unique<rtm::TcpSocket>(host, port);
+        mode = rtm::access::Mode::READ_WRITE;
+    }
+    else if (parser.is_used("--udp"))
+    {
+        auto [host, port] = parse_host_port(udp_target);
+        printf("Connecting via UDP to %s:%u\n", host.c_str(), port);
+        io = std::make_unique<rtm::UdpSocket>(host, port);
+        mode = rtm::access::Mode::READ_WRITE;
+    }
+    else if (parser.is_used("--listen"))
+    {
+        printf("Connecting via local socket to %s\n", listening_path.c_str());
         io = std::make_unique<rtm::LocalSocket>(listening_path);
         mode = rtm::access::Mode::READ_WRITE;
     }
     else
     {
+        printf("Writing to file %s\n", output_path.c_str());
         io = std::make_unique<rtm::File>(output_path);
         mode = rtm::access::Mode::WRITE_ONLY | rtm::access::Mode::TRUNCATE;
     }

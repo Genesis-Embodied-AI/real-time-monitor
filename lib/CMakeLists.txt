@@ -6,6 +6,8 @@ set(LIB_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/io/posix/file.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/io/posix/socket.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/io/posix/local_socket.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/io/posix/tcp_socket.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/io/posix/udp_socket.cc
 
     ${CMAKE_CURRENT_SOURCE_DIR}/src/parser.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/probe.cc

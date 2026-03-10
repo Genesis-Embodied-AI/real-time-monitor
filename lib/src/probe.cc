@@ -128,7 +128,10 @@ namespace rtm
 
     void Probe::flush()
     {
-        io_->write(samples_.data(), samples_.size() * sizeof(decltype(samples_)::value_type));
-        samples_.clear();
+        if (not samples_.empty())
+        {
+            io_->write(samples_.data(), samples_.size() * sizeof(decltype(samples_)::value_type));
+            samples_.clear();
+        }
     }
 }

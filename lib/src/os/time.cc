@@ -1,5 +1,7 @@
 #include "os/time.h"
 
+using namespace std::chrono;
+
 namespace rtm
 {
     nanoseconds since_epoch()

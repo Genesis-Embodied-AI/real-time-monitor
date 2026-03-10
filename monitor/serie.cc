@@ -5,12 +5,14 @@
 
 #include "serie.h"
 
+using namespace std::chrono;
+
 namespace rtm
 {
     ImVec4 generate_random_color()
     {
         // procedural color generator: the gold ratio
-        static double next_color_hue = 1.0 / (rand() % 100);
+        static double next_color_hue = 1.0 / (rand() % 99 + 1);
         constexpr double golden_ratio_conjugate = 0.618033988749895; // 1 / phi
         next_color_hue += golden_ratio_conjugate;
         next_color_hue = std::fmod(next_color_hue, 1.0);
