@@ -5,7 +5,7 @@ build-backend = "scikit_build_core.build"
 [project]
 name = "real-time-monitor"
 version = "0.0.0"
-description = "A probe and a moonitor to investigate your application real time behavior."
+description = "A probe and a monitor to investigate your application real time behavior."
 readme = {file = "README.md", content-type = "text/markdown"}
 license = { text = "CeCILL-C" }
 maintainers = [

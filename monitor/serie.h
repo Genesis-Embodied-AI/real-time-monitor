@@ -47,7 +47,7 @@ namespace rtm
 
         std::vector<Section> sections_;
         std::vector<Point> serie_;
-        bool is_downsampled_;
+        bool is_downsampled_{false};
     };
 }
 

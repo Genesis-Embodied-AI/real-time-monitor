@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cerrno>
 #include <filesystem>
 
 #include "recorder.h"
@@ -47,14 +48,23 @@ namespace rtm
         {
             uint8_t buffer[2048];
             int64_t read = client.io->read(buffer, sizeof(buffer));
-            if (read == 0)
+            if (read < 0)
             {
-                // client disconnection
-                printf("[Recorder] Client disconnected (%s)\n", client.name.c_str());
-                client.io.reset();
+                if (errno != EAGAIN)
+                {
+                    printf("[Recorder] Read error on client (%s)\n", client.name.c_str());
+                    client.io.reset();
+                    continue;
+                }
             }
-
-            if (read > 0)
+            else if (read == 0)
+            {
+                printf("[Recorder] Client disconnected (%s)\n", client.name.c_str());
+                client.flush();
+                client.io.reset();
+                continue;
+            }
+            else
             {
                 client.buffer.insert(client.buffer.end(), buffer, buffer + read);
             }
@@ -80,7 +90,7 @@ namespace rtm
                 std::string process_name = extract_string();
                 std::string source_name  = extract_string();
 
-                std::string name = recording_path_ + '/';;
+                std::string name = recording_path_ + '/';
                 name += format_iso_timestamp(start_time);
                 name += '_';
                 name += process_name;
