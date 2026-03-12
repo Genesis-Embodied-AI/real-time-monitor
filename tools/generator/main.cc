@@ -3,7 +3,6 @@
 #include "rtm/io/file.h"
 #include "rtm/io/posix/local_socket.h"
 #include "rtm/io/posix/tcp_socket.h"
-#include "rtm/io/posix/udp_socket.h"
 
 using namespace std::chrono;
 
@@ -43,10 +42,6 @@ int main(int argc, char *argv[])
         .help("connect via TCP to host:port")
         .default_value(std::string{});
 
-    parser.add_argument("-u", "--udp")
-        .help("connect via UDP to host:port")
-        .default_value(std::string{});
-
     try
     {
         parser.parse_args(argc, argv);
@@ -63,7 +58,6 @@ int main(int argc, char *argv[])
     printf("Generate %ld samples\n", samples);
 
     std::string tcp_target = parser.get<std::string>("--tcp");
-    std::string udp_target = parser.get<std::string>("--udp");
 
     std::unique_ptr<rtm::AbstractIO> io;
     rtm::access::Mode mode;
@@ -72,13 +66,6 @@ int main(int argc, char *argv[])
         auto [host, port] = parse_host_port(tcp_target);
         printf("Connecting via TCP to %s:%u\n", host.c_str(), port);
         io = std::make_unique<rtm::TcpSocket>(host, port);
-        mode = rtm::access::Mode::READ_WRITE;
-    }
-    else if (parser.is_used("--udp"))
-    {
-        auto [host, port] = parse_host_port(udp_target);
-        printf("Connecting via UDP to %s:%u\n", host.c_str(), port);
-        io = std::make_unique<rtm::UdpSocket>(host, port);
         mode = rtm::access::Mode::READ_WRITE;
     }
     else if (parser.is_used("--listen"))

@@ -10,7 +10,6 @@
 #include "rtm/io/null.h"
 #include "rtm/io/posix/local_socket.h"
 #include "rtm/io/posix/tcp_socket.h"
-#include "rtm/io/posix/udp_socket.h"
 #include "rtm/os/time.h"
 
 namespace fs = std::filesystem;
@@ -23,7 +22,6 @@ namespace
 constexpr int NUM_SAMPLES = 100;
 constexpr nanoseconds START = 8'000'000s;
 constexpr uint16_t TCP_TEST_PORT = 19770;
-constexpr uint16_t UDP_TEST_PORT = 19771;
 
 int test_failures = 0;
 
@@ -234,52 +232,7 @@ bool test_tcp()
 }
 
 
-// -- Test 4: UDP transport --
-
-bool test_udp()
-{
-    auto tmp_dir = fs::temp_directory_path() / "rtm_test_udp";
-    fs::remove_all(tmp_dir);
-    fs::create_directories(tmp_dir);
-
-    {
-        Recorder recorder(tmp_dir.string());
-
-        auto udp_receiver = std::make_unique<UdpSocket>(UDP_TEST_PORT);
-        {
-            auto rc = udp_receiver->open(access::Mode::READ_WRITE | access::Mode::NON_BLOCKING);
-            CHECK(not rc, "UDP bind failed");
-        }
-        recorder.add_client(std::move(udp_receiver));
-
-        std::thread probe_thread([]()
-        {
-            sleep(50ms);
-            auto io = std::make_unique<UdpSocket>("127.0.0.1", UDP_TEST_PORT);
-            if (io->open(access::Mode::READ_WRITE))
-            {
-                printf("  probe UDP connect failed\n");
-                return;
-            }
-            send_probe_data(std::move(io));
-        });
-
-        auto deadline = since_epoch() + 2s;
-        while (since_epoch() < deadline)
-        {
-            recorder.process();
-            sleep(1ms);
-        }
-
-        probe_thread.join();
-    }
-
-    bool ok = verify_tick_file(tmp_dir);
-    fs::remove_all(tmp_dir);
-    return ok;
-}
-
-// -- Test 5: Valid header but no logged samples --
+// -- Test 4: Valid header but no logged samples --
 
 bool test_empty_data()
 {
@@ -319,7 +272,7 @@ bool test_empty_data()
 }
 
 
-// -- Test 6: File truncated mid-data --
+// -- Test 5: File truncated mid-data --
 
 bool test_truncated_data()
 {
@@ -360,7 +313,7 @@ bool test_truncated_data()
 }
 
 
-// -- Test 7: Completely corrupted file (random garbage) --
+// -- Test 6: Completely corrupted file (random garbage) --
 
 bool test_corrupted_data()
 {
@@ -415,7 +368,6 @@ int main()
         {"file_sink",        test_file_sink},
         {"local_socket",     test_local_socket},
         {"tcp",              test_tcp},
-        {"udp",              test_udp},
         {"empty_data",       test_empty_data},
         {"truncated_data",   test_truncated_data},
         {"corrupted_data",   test_corrupted_data},

@@ -12,7 +12,6 @@
 #include "rtm/io/file.h"
 #include "rtm/io/posix/local_socket.h"
 #include "rtm/io/posix/tcp_socket.h"
-#include "rtm/io/posix/udp_socket.h"
 #include "rtm/os/time.h"
 
 namespace nb = nanobind;
@@ -66,25 +65,6 @@ namespace rtm
                     if (rc)
                     {
                         throw std::runtime_error("Cannot connect to the recorder via TCP");
-                    }
-
-                    self.init(process, task,
-                        start, milliseconds{period_ms}, priority,
-                        std::move(io));
-                }, "process"_a, "task"_a,
-                   "period_ms"_a, "priority"_a,
-                   "host"_a, "port"_a,
-                   "start"_a = start_time())
-            .def("init_udp", [](Probe& self, char const* process, char const* task,
-                                uint32_t period_ms, int32_t priority,
-                                std::string_view host, uint16_t port,
-                                nanoseconds start)
-                {
-                    auto io = std::make_unique<rtm::UdpSocket>(host, port);
-                    auto rc = io->open(rtm::access::Mode::READ_WRITE);
-                    if (rc)
-                    {
-                        throw std::runtime_error("Cannot connect to the recorder via UDP");
                     }
 
                     self.init(process, task,
@@ -178,16 +158,6 @@ namespace rtm
                     self.add_client(std::move(io));
                 }
             })
-            .def("add_udp", [](Recorder& self, uint16_t port)
-            {
-                auto udp = std::make_unique<UdpSocket>(port);
-                auto rc = udp->open(access::Mode::READ_WRITE | access::Mode::NON_BLOCKING);
-                if (rc)
-                {
-                    throw std::runtime_error(rc.message().c_str());
-                }
-                self.add_client(std::move(udp));
-            }, nb::arg("port"))
             .def("process", &Recorder::process);
     }
 }

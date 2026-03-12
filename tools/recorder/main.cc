@@ -6,7 +6,6 @@
 #include "rtm/os/time.h"
 #include "rtm/io/posix/local_socket.h"
 #include "rtm/io/posix/tcp_socket.h"
-#include "rtm/io/posix/udp_socket.h"
 
 using namespace rtm;
 
@@ -50,10 +49,6 @@ int main(int argc, char* argv[])
         .help("listen on a TCP socket at [host:]port (repeatable)")
         .default_value(std::vector<std::string>{})
         .append();
-    parser.add_argument("-u", "--udp")
-        .help("listen on a UDP socket at [host:]port (repeatable)")
-        .default_value(std::vector<std::string>{})
-        .append();
 
     try
     {
@@ -68,10 +63,9 @@ int main(int argc, char* argv[])
 
     auto local_args = parser.get<std::vector<std::string>>("--local");
     auto tcp_args   = parser.get<std::vector<std::string>>("--tcp");
-    auto udp_args   = parser.get<std::vector<std::string>>("--udp");
 
     // Default to a local socket if nothing is specified
-    if (local_args.empty() and tcp_args.empty() and udp_args.empty())
+    if (local_args.empty() and tcp_args.empty())
     {
         local_args.push_back(DEFAULT_LISTENING_PATH);
     }
@@ -115,26 +109,6 @@ int main(int argc, char* argv[])
         }
         printf("[Recorder] Listening on TCP %s:%u\n", tcp_display, port);
         tcp_listeners.push_back(std::move(listener));
-    }
-
-    // --- Set up UDP sockets (added as clients directly) ---
-    for (auto const& arg : udp_args)
-    {
-        auto [host, port] = parse_host_port(arg);
-        auto udp = std::make_unique<UdpSocket>(port);
-        auto rc = udp->open(access::Mode::READ_WRITE | access::Mode::NON_BLOCKING);
-        if (rc)
-        {
-            printf("[Recorder] open() error on UDP '%s': %s\n", arg.c_str(), rc.message().c_str());
-            return 1;
-        }
-        char const* udp_display = "*";
-        if (not host.empty())
-        {
-            udp_display = host.c_str();
-        }
-        printf("[Recorder] Listening on UDP %s:%u\n", udp_display, port);
-        recorder.add_client(std::move(udp));
     }
 
     while (keep_running)
