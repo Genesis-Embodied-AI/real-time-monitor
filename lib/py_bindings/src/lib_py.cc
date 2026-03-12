@@ -11,10 +11,12 @@
 #include "rtm/recorder.h"
 #include "rtm/io/file.h"
 #include "rtm/io/posix/local_socket.h"
+#include "rtm/io/posix/tcp_socket.h"
 #include "rtm/os/time.h"
 
 namespace nb = nanobind;
 using namespace nb::literals;
+using namespace std::chrono;
 
 namespace rtm
 {
@@ -23,7 +25,7 @@ namespace rtm
         std::vector<double> x, y;
         x.reserve(data.size());
         y.reserve(data.size());
-        for (auto d : data)
+        for (auto const& d : data)
         {
             x.push_back(d.x);
             y.push_back(d.y);
@@ -53,6 +55,25 @@ namespace rtm
                    "period_ms"_a, "priority"_a,
                    "start"_a = start_time(),
                    "listening_path"_a = DEFAULT_LISTENING_PATH)
+            .def("init_tcp", [](Probe& self, char const* process, char const* task,
+                                uint32_t period_ms, int32_t priority,
+                                std::string_view host, uint16_t port,
+                                nanoseconds start)
+                {
+                    auto io = std::make_unique<rtm::TcpSocket>(host, port);
+                    auto rc = io->open(rtm::access::Mode::READ_WRITE);
+                    if (rc)
+                    {
+                        throw std::runtime_error("Cannot connect to the recorder via TCP");
+                    }
+
+                    self.init(process, task,
+                        start, milliseconds{period_ms}, priority,
+                        std::move(io));
+                }, "process"_a, "task"_a,
+                   "period_ms"_a, "priority"_a,
+                   "host"_a, "port"_a,
+                   "start"_a = start_time())
             .def("log", [](Probe& self)
                 {
                     self.log();
@@ -108,9 +129,28 @@ namespace rtm
                 }
             }, nb::arg("backlog") = 1);
 
+        nb::class_<TcpListener>(m, "TcpListener")
+            .def(nb::init<std::string_view, uint16_t>(), nb::arg("bind_address") = "", nb::arg("port") = 0)
+            .def("listen", [](TcpListener& self, int backlog)
+            {
+                auto rc = self.listen(backlog);
+                if (rc)
+                {
+                    throw std::runtime_error(rc.message().c_str());
+                }
+            }, nb::arg("backlog") = 4);
+
         nb::class_<Recorder>(m, "Recorder")
             .def(nb::init<std::string_view>(), nb::arg("recording_path"))
             .def("accept", [](Recorder& self, LocalListener& server)
+            {
+                auto io = server.accept(access::Mode::NON_BLOCKING);
+                if (io != nullptr)
+                {
+                    self.add_client(std::move(io));
+                }
+            })
+            .def("accept_tcp", [](Recorder& self, TcpListener& server)
             {
                 auto io = server.accept(access::Mode::NON_BLOCKING);
                 if (io != nullptr)

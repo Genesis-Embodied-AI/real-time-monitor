@@ -20,6 +20,7 @@ enable_testing()
 
 option(BUILD_TOOLS      "Build tools" ON)
 option(BUILD_MONITOR    "Build monitor" ON)
+option(BUILD_TESTS      "Build tests" ON)
 
 add_subdirectory(lib)
 
@@ -29,6 +30,10 @@ endif()
 
 if (BUILD_TOOLS)
     add_subdirectory(tools)
+endif()
+
+if (BUILD_TESTS)
+    add_subdirectory(tests)
 endif()
 
 add_subdirectory(py_bindings)

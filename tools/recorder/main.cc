@@ -5,6 +5,7 @@
 #include "rtm/recorder.h"
 #include "rtm/os/time.h"
 #include "rtm/io/posix/local_socket.h"
+#include "rtm/io/posix/tcp_socket.h"
 
 using namespace rtm;
 
@@ -18,12 +19,21 @@ void signal_handler(int signal)
     }
 }
 
+static std::pair<std::string, uint16_t> parse_host_port(std::string const& str)
+{
+    auto pos = str.rfind(':');
+    if (pos == std::string::npos)
+    {
+        return {"", static_cast<uint16_t>(std::stoi(str))};
+    }
+    return {str.substr(0, pos), static_cast<uint16_t>(std::stoi(str.substr(pos + 1)))};
+}
+
 int main(int argc, char* argv[])
 {
     std::signal(SIGINT, signal_handler);
 
     std::string recording_path;
-    std::string listening_path;
 
     argparse::ArgumentParser parser("rtm_recorder", "Record real-time probe data to tick files.");
     parser.add_argument("output")
@@ -31,42 +41,94 @@ int main(int argc, char* argv[])
         .default_value(std::string{"."})
         .nargs(argparse::nargs_pattern::optional)
         .store_into(recording_path);
-    parser.add_argument("-l", "--listen")
-        .help("path of the Unix socket to listen for probe connections")
-        .default_value(std::string{DEFAULT_LISTENING_PATH})
-        .store_into(listening_path);
+    parser.add_argument("-l", "--local")
+        .help("listen on a local (Unix) socket at the given path (repeatable)")
+        .default_value(std::vector<std::string>{})
+        .append();
+    parser.add_argument("-t", "--tcp")
+        .help("listen on a TCP socket at [host:]port (repeatable)")
+        .default_value(std::vector<std::string>{})
+        .append();
 
     try
     {
         parser.parse_args(argc, argv);
     }
-    catch (const std::runtime_error& e)
+    catch (const std::exception& e)
     {
         printf("%s\n", e.what());
         printf("%s\n", parser.help().str().c_str());
         return 1;
     }
 
+    auto local_args = parser.get<std::vector<std::string>>("--local");
+    auto tcp_args   = parser.get<std::vector<std::string>>("--tcp");
+
+    // Default to a local socket if nothing is specified
+    if (local_args.empty() and tcp_args.empty())
+    {
+        local_args.push_back(DEFAULT_LISTENING_PATH);
+    }
+
     printf("[Recorder] Starting\n");
     printf("[Recorder] Recording to %s\n", recording_path.c_str());
-    printf("[Recorder] Listening to %s\n", listening_path.c_str());
 
     Recorder recorder{recording_path};
 
-    LocalListener server(listening_path);
-    auto rc = server.listen(1);
-    if (rc)
+    // --- Set up local (Unix) listeners ---
+    std::vector<std::unique_ptr<LocalListener>> local_listeners;
+    for (auto const& path : local_args)
     {
-        printf("listen() error: %s\n", rc.message().c_str());
-        return 1;
+        auto listener = std::make_unique<LocalListener>(path);
+        auto rc = listener->listen(1);
+        if (rc)
+        {
+            printf("[Recorder] listen() error on local '%s': %s\n", path.c_str(), rc.message().c_str());
+            return 1;
+        }
+        printf("[Recorder] Listening on local socket %s\n", path.c_str());
+        local_listeners.push_back(std::move(listener));
+    }
+
+    // --- Set up TCP listeners ---
+    std::vector<std::unique_ptr<TcpListener>> tcp_listeners;
+    for (auto const& arg : tcp_args)
+    {
+        auto [host, port] = parse_host_port(arg);
+        auto listener = std::make_unique<TcpListener>(host, port);
+        auto rc = listener->listen(4);
+        if (rc)
+        {
+            printf("[Recorder] listen() error on TCP '%s': %s\n", arg.c_str(), rc.message().c_str());
+            return 1;
+        }
+        char const* tcp_display = "*";
+        if (not host.empty())
+        {
+            tcp_display = host.c_str();
+        }
+        printf("[Recorder] Listening on TCP %s:%u\n", tcp_display, port);
+        tcp_listeners.push_back(std::move(listener));
     }
 
     while (keep_running)
     {
-        auto io = server.accept(access::Mode::NON_BLOCKING);
-        if (io != nullptr)
+        for (auto& listener : local_listeners)
         {
-            recorder.add_client(std::move(io));
+            auto io = listener->accept(access::Mode::NON_BLOCKING);
+            if (io != nullptr)
+            {
+                recorder.add_client(std::move(io));
+            }
+        }
+
+        for (auto& listener : tcp_listeners)
+        {
+            auto io = listener->accept(access::Mode::NON_BLOCKING);
+            if (io != nullptr)
+            {
+                recorder.add_client(std::move(io));
+            }
         }
 
         recorder.process();

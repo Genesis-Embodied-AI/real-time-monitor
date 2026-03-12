@@ -1,3 +1,5 @@
+#include <cinttypes>
+
 #include "serializer.h"
 #include "parser.h"
 
@@ -36,9 +38,9 @@ namespace rtm
 
     void Parser::print_header()
     {
-        printf("version: %d\n", header_.version);
-        printf("offset:  %ld\n", header_.data_section_offset);
-        printf("start:   %ld\n", header_.start_time.count());
+        printf("version: %u\n", header_.version);
+        printf("offset:  %" PRIu64 "\n", header_.data_section_offset);
+        printf("start:   %" PRId64 "\n", header_.start_time.count());
         printf("process: %s\n", header_.process.c_str());
         printf("thread:  %s\n", header_.name.c_str());
     }
@@ -139,7 +141,7 @@ namespace rtm
             }
         }
 
-        if(samples_.size() == 0)
+        if (samples_.size() == 0)
         {
             return false;
         }
