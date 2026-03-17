@@ -49,6 +49,14 @@ int main(int argc, char* argv[])
         .help("listen on a TCP socket at [host:]port (repeatable)")
         .default_value(std::vector<std::string>{})
         .append();
+    parser.add_argument("--pre-duration")
+        .help("blackbox pre-event capture duration in seconds (default: 120)")
+        .default_value(120u)
+        .scan<'u', unsigned>();
+    parser.add_argument("--post-duration")
+        .help("blackbox post-event capture duration in seconds (default: 120)")
+        .default_value(120u)
+        .scan<'u', unsigned>();
 
     try
     {
@@ -70,10 +78,16 @@ int main(int argc, char* argv[])
         local_args.push_back(DEFAULT_LISTENING_PATH);
     }
 
+    auto pre_seconds  = parser.get<unsigned>("--pre-duration");
+    auto post_seconds = parser.get<unsigned>("--post-duration");
+    nanoseconds pre_duration  = std::chrono::seconds{pre_seconds};
+    nanoseconds post_duration = std::chrono::seconds{post_seconds};
+
     printf("[Recorder] Starting\n");
     printf("[Recorder] Recording to %s\n", recording_path.c_str());
+    printf("[Recorder] Blackbox window: %us pre / %us post\n", pre_seconds, post_seconds);
 
-    Recorder recorder{recording_path};
+    Recorder recorder{recording_path, pre_duration, post_duration};
 
     // --- Set up local (Unix) listeners ---
     std::vector<std::unique_ptr<LocalListener>> local_listeners;

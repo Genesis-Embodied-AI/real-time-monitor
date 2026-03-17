@@ -132,6 +132,17 @@ namespace rtm
                         continue;
                     }
 
+                    if (raw_sample & Command::SET_THRESHOLD)
+                    {
+                        if (not check_boundary(sizeof(uint64_t)))
+                        {
+                            refill();
+                        }
+
+                        extract_data<uint64_t>(pos);
+                        continue;
+                    }
+
                     printf("Something wrong happened: command not recognized! (%08x)\n", raw_sample);
                     continue;
                 }

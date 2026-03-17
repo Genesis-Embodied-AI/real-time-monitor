@@ -98,6 +98,7 @@ Note: an update reference control replace a timestamp.
 | `0x00000001` | `u64 new_period_ns` | Update task period |
 | `0x00000002` | `u32 new_priority` | Update task priority |
 | `0x00000004` | `u64 new_reference_ns` | Update reference point (ns since epoch)|
+| `0x00000008` | `u64 threshold_ns` | Set blackbox threshold (0 = disabled) |
 
 #### Example — Update Period (`0x00000001`)
 ```
@@ -125,9 +126,24 @@ Note: an update reference control replace a timestamp.
 │ 0x1875be46ebe41a00            │ ← u64 (new_reference_ns)
 └───────────────────────────────┘
 ```
+#### Example — Set Threshold (`0x00000008`)
+```
+┌───────────────────────────────┐
+│ 0x80000008 (flag + OOB type)  │ ← u32 (bit31=1)
+├───────────────────────────────┤
+│ 0x00000000004C4B40            │ ← u64 (threshold_ns = 5ms)
+└───────────────────────────────┘
+```
+When set to a non-zero value, the recorder enters blackbox mode for this probe:
+it maintains a rolling buffer and only writes to disk when the time diff between
+consecutive loop starts exceeds the threshold. A value of 0 disables blackbox mode.
+
 At the start of the data section, there must always be three OOB messages:
 update period    (0x00000001) → u64 new_period
 update priority  (0x00000002) → u32 new_priority
 update reference (0x00000004) → u64 new_reference_time
+
+An optional fourth message may follow:
+set threshold    (0x00000008) → u64 threshold_ns
 
 Their order does not matter, but all must appear before any normal timestamp deltas.

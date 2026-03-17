@@ -80,31 +80,26 @@ namespace rtm
     void Probe::update_priority(int32_t priority)
     {
         priority_ = priority;
-
-        constexpr uint32_t oob = ESCAPE | Command::UPDATE_PRIORITY;
-        io_->write(&oob, sizeof(uint32_t));
-        io_->write(&priority_, sizeof(priority_));
+        write_command(*io_, Command::UPDATE_PRIORITY, priority_);
     }
 
     void Probe::update_period(nanoseconds period)
     {
         period_ = period;
+        write_command(*io_, Command::UPDATE_PERIOD, period);
+    }
 
-        constexpr uint32_t oob = ESCAPE | Command::UPDATE_PERIOD;
-        io_->write(&oob, sizeof(uint32_t));
-        io_->write(&period_, sizeof(period_));
+    void Probe::set_threshold(nanoseconds threshold)
+    {
+        flush();
+        write_command(*io_, Command::SET_THRESHOLD, threshold);
     }
 
     void Probe::update_reference(nanoseconds new_ref)
     {
-        flush(); // shall be written before the new reference to keep coherency
-
+        flush();
         last_reference_ = new_ref;
-        uint64_t raw_ref = last_reference_.count();
-
-        constexpr uint32_t oob = ESCAPE | Command::UPDATE_REFERENCE;
-        io_->write(&oob, sizeof(uint32_t));
-        io_->write(&raw_ref, sizeof(raw_ref));
+        write_command(*io_, Command::UPDATE_REFERENCE, last_reference_);
     }
 
     void Probe::log(nanoseconds timestamp)

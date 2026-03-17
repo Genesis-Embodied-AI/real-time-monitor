@@ -1,105 +1,16 @@
-#include <cstdio>
 #include <cstdlib>
-#include <filesystem>
 #include <thread>
 
-#include "rtm/probe.h"
-#include "rtm/recorder.h"
-#include "rtm/parser.h"
+#include "test_helpers.h"
 #include "rtm/io/file.h"
 #include "rtm/io/null.h"
-#include "rtm/io/posix/local_socket.h"
 #include "rtm/io/posix/tcp_socket.h"
-#include "rtm/os/time.h"
-
-namespace fs = std::filesystem;
-using namespace rtm;
-using namespace std::chrono;
 
 namespace
 {
-
-constexpr int NUM_SAMPLES = 100;
-constexpr nanoseconds START = 8'000'000s;
 constexpr uint16_t TCP_TEST_PORT = 19770;
-
-int test_failures = 0;
-
-#define CHECK(cond, msg) do                                         \
-{                                                                   \
-    if (not (cond))                                                 \
-    {                                                               \
-        printf("  FAIL: %s (line %d)\n", (msg), __LINE__);         \
-        return false;                                               \
-    }                                                               \
-} while(0)
-
-
-void send_probe_data(std::unique_ptr<AbstractIO> io)
-{
-    Probe probe;
-    probe.init("test_process", "test_task", START, 1ms, 42, std::move(io));
-
-    for (int i = 0; i < NUM_SAMPLES; ++i)
-    {
-        auto t = START + 20ms + nanoseconds(i * 1'000'000);
-        probe.log(t);
-        probe.log(t + 100us);
-    }
-    probe.flush();
 }
 
-
-fs::path find_tick_file(fs::path const& dir)
-{
-    for (auto const& entry : fs::directory_iterator(dir))
-    {
-        if (entry.path().extension() == ".tick")
-        {
-            return entry.path();
-        }
-    }
-    return {};
-}
-
-
-bool verify_tick_file(fs::path const& dir)
-{
-    auto tick_file = find_tick_file(dir);
-    CHECK(not tick_file.empty(), "no .tick file found");
-    CHECK(fs::file_size(tick_file) > 64, ".tick file too small");
-
-    auto io = std::make_unique<File>(tick_file.string());
-    auto rc = io->open(access::Mode::READ_ONLY);
-    CHECK(not rc, "cannot open .tick file for reading");
-
-    Parser parser(std::move(io));
-    parser.load_header();
-
-    CHECK(parser.header().process == "test_process", "wrong process name");
-    CHECK(parser.header().name == "test_task", "wrong task name");
-    CHECK(parser.header().version == 1, "wrong protocol version");
-
-    bool loaded = parser.load_samples();
-    CHECK(loaded, "failed to load samples");
-
-    auto const& samples = parser.samples();
-    CHECK(samples.size() == 200, "unexpected sample count");
-
-    CHECK(samples[0] == 20ms, "wrong sample[0]: expected 20ms (reference)");
-    CHECK(samples[1] == 20100us, "wrong sample[1]: expected 20.1ms");
-    CHECK(samples[2] == 21ms, "wrong sample[2]: expected 21ms");
-    CHECK(samples[3] == 21100us, "wrong sample[3]: expected 21.1ms");
-
-    // Last pair: i=99 → t = START + 119ms
-    CHECK(samples[198] == 119ms, "wrong sample[198]: expected 119ms");
-    CHECK(samples[199] == 119100us, "wrong sample[199]: expected 119.1ms");
-
-    return true;
-}
-
-
-// -- Test 1: Probe -> File -> Parser round-trip (no network) --
 
 bool test_file_sink()
 {
@@ -141,26 +52,6 @@ bool test_file_sink()
 }
 
 
-// -- Helper: run the recorder accept+process loop for stream-based transports --
-
-void recorder_loop(Recorder& recorder, AbstractListener& listener, nanoseconds timeout)
-{
-    auto deadline = since_epoch() + timeout;
-    while (since_epoch() < deadline)
-    {
-        auto io = listener.accept(access::Mode::NON_BLOCKING);
-        if (io != nullptr)
-        {
-            recorder.add_client(std::move(io));
-        }
-        recorder.process();
-        sleep(1ms);
-    }
-}
-
-
-// -- Test 2: Local (Unix) socket transport --
-
 bool test_local_socket()
 {
     auto tmp_dir = fs::temp_directory_path() / "rtm_test_local";
@@ -196,8 +87,6 @@ bool test_local_socket()
 }
 
 
-// -- Test 3: TCP transport --
-
 bool test_tcp()
 {
     auto tmp_dir = fs::temp_directory_path() / "rtm_test_tcp";
@@ -231,8 +120,6 @@ bool test_tcp()
     return ok;
 }
 
-
-// -- Test 4: Valid header but no logged samples --
 
 bool test_empty_data()
 {
@@ -271,8 +158,6 @@ bool test_empty_data()
     return true;
 }
 
-
-// -- Test 5: File truncated mid-data --
 
 bool test_truncated_data()
 {
@@ -313,8 +198,6 @@ bool test_truncated_data()
 }
 
 
-// -- Test 6: Completely corrupted file (random garbage) --
-
 bool test_corrupted_data()
 {
     auto tmp_dir = fs::temp_directory_path() / "rtm_test_corrupt";
@@ -343,54 +226,8 @@ bool test_corrupted_data()
         Parser parser(std::move(io));
         parser.load_header();
         parser.load_samples();
-        // No value checks: we only verify the parser does not crash
     }
 
     fs::remove_all(tmp_dir);
     return true;
-}
-
-} // namespace
-
-
-// -- Main --
-
-int main()
-{
-    struct TestCase
-    {
-        char const* name;
-        bool (*fn)();
-    };
-
-    TestCase tests[] =
-    {
-        {"file_sink",        test_file_sink},
-        {"local_socket",     test_local_socket},
-        {"tcp",              test_tcp},
-        {"empty_data",       test_empty_data},
-        {"truncated_data",   test_truncated_data},
-        {"corrupted_data",   test_corrupted_data},
-    };
-
-    for (auto& [name, fn] : tests)
-    {
-        printf("[test] %s\n", name);
-        if (not fn())
-        {
-            printf("  FAIL\n");
-            test_failures++;
-        }
-        else
-        {
-            printf("  PASS\n");
-        }
-    }
-
-    printf("\n%d test(s) failed\n", test_failures);
-    if (test_failures == 0)
-    {
-        return 0;
-    }
-    return 1;
 }
