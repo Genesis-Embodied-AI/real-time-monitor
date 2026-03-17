@@ -11,7 +11,7 @@ required_conan_version = ">=2.10"
 
 class RealTimeMonitorRecipe(ConanFile):
     name = "real-time-monitor"
-    version = "0.1.10"
+    version = "0.2.0"
     url = "https://github.com/Genesis-Embodied-AI/real-time-monitor"
     homepage = "https://github.com/Genesis-Embodied-AI/real-time-monitor"
     description = "A real time probe/monitor to debug your software"
@@ -58,6 +58,7 @@ class RealTimeMonitorRecipe(ConanFile):
         tc = CMakeToolchain(self)
         tc.cache_variables["BUILD_MONITOR"] = "OFF"
         tc.cache_variables["BUILD_TOOLS"] = "OFF"
+        tc.cache_variables["BUILD_TESTS"] = "OFF"
         tc.generate()
 
     def build(self):
