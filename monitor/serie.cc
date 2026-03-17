@@ -110,12 +110,9 @@ namespace rtm
             });
             if (it == sections_.end())
             {
-                // out of scope: show full serie
-                ImPlot::PlotLine(name_.c_str(), &serie_.at(0).x, &serie_.at(0).y, static_cast<int>(serie_.size()),
-                    0, 0, sizeof(Point));
-                return is_downsampled_;
+                // Viewport is past the last section boundary — clamp to last
+                it = std::prev(sections_.end());
             }
-
             // display 3 sections (before, here and after if possible)
             if (it != sections_.begin())
             {
