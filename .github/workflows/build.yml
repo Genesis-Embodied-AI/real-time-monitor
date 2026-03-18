@@ -41,7 +41,7 @@ jobs:
 
     - name: Test
       run: |
-        ctest --test-dir build --output-on-failure
+        ctest -V --test-dir build --output-on-failure
 
     - name: Upload Build Artifact
       if: matrix.os == 'ubuntu-latest' && matrix.build_type == 'Release'
@@ -84,7 +84,7 @@ jobs:
     - name: Export Conan package
       run: |
         conan cache save "real-time-monitor/${{ env.PKG_VERSION }}:*" --file real-time-monitor-${{ env.PKG_VERSION }}-linux-x86_64.tgz
-        
+
     - name: Upload Conan package artifact
       uses: actions/upload-artifact@v4
       with:

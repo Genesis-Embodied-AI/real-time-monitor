@@ -23,7 +23,7 @@ namespace rtm
         , pre_duration_{std::max(pre_duration, nanoseconds(2s))}
         , post_duration_{std::max(post_duration, nanoseconds(2s))}
     {
-        std::filesystem::create_directory(recording_path_);
+        std::filesystem::create_directories(recording_path_);
     }
 
     void Recorder::Client::flush()
@@ -79,7 +79,7 @@ namespace rtm
 
     void Recorder::trigger_recording(Client& client, nanoseconds trigger_absolute)
     {
-        nanoseconds trigger_time = client.start_time + trigger_absolute;
+        long trigger_s = std::chrono::duration_cast<std::chrono::seconds>(trigger_absolute).count();
 
         std::string path = recording_path_ + '/';
         path += format_iso_timestamp(client.start_time);
@@ -88,44 +88,84 @@ namespace rtm
         path += '_';
         path += client.source_name;
         path += '_';
-        path += format_iso_timestamp(trigger_time);
+        path += std::to_string(trigger_s) + 's';
         path += ".tick";
-
-        printf("[Recorder] Blackbox trigger! Writing %s\n", path.c_str());
+        printf("[Recorder] Blackbox trigger %ldns @ %lds! Writing %s\n",
+               static_cast<long>(client.detected_jitter.count()), trigger_s, path.c_str());
 
         client.sink = std::make_unique<File>(path);
         client.sink->open(access::Mode::WRITE_ONLY | access::Mode::TRUNCATE);
 
-        client.sink->write(client.header_bytes.data(),
-            static_cast<int64_t>(client.header_bytes.size()));
+        // Rebuild header with a unique task name so the GUI can distinguish files
+        std::string unique_task = client.source_name + "@" + std::to_string(trigger_s) + "s";
+        {
+            constexpr uint16_t PROTOCOL_VERSION = 1;
+            constexpr uint8_t PADDING[6] = {0};
 
+            std::vector<uint8_t> header;
+            append(header, PROTOCOL_VERSION);
+            append(header, PADDING);
+            int64_t data_offset = 0;
+            append(header, data_offset);
+            header.insert(header.end(), client.header_bytes.begin() + 16, client.header_bytes.begin() + 32);
+
+            append(header, client.start_time);
+
+            uint16_t process_size = static_cast<uint16_t>(client.process_name.size());
+            append(header, process_size);
+            append(header, std::string_view{client.process_name});
+
+            uint16_t task_size = static_cast<uint16_t>(unique_task.size());
+            append(header, task_size);
+            append(header, std::string_view{unique_task});
+
+            data_offset = static_cast<int64_t>(header.size());
+            if (data_offset % 8)
+            {
+                data_offset += (8 - data_offset % 8);
+            }
+            header.resize(static_cast<std::size_t>(data_offset));
+            std::memcpy(header.data() + 8, &data_offset, sizeof(data_offset));
+
+            append(header, PROTOCOL_VERSION);
+            append(header, PADDING);
+
+            client.sink->write(header.data(), static_cast<int64_t>(header.size()));
+        }
         write_command(*client.sink, Command::UPDATE_PERIOD, client.current_period);
         write_command(*client.sink, Command::UPDATE_PRIORITY, client.current_priority);
 
-        if (not client.ring.empty())
+        // Skip ring chunks until we find one starting with UPDATE_REFERENCE.
+        // Chunks split at reference boundaries are self-contained; earlier chunks
+        // without a leading reference would produce an artificial spike in times_diff.
+        std::size_t start_idx = client.ring.size();
+        for (std::size_t i = 0; i < client.ring.size(); ++i)
         {
-            auto const& first_chunk = client.ring.front();
-            bool starts_with_ref = false;
-            if (first_chunk.data.size() >= sizeof(uint32_t))
+            if (client.ring[i].data.size() >= sizeof(uint32_t))
             {
                 uint32_t first_word;
-                std::memcpy(&first_word, first_chunk.data.data(), sizeof(first_word));
-                starts_with_ref = (first_word == (ESCAPE | Command::UPDATE_REFERENCE));
-            }
-
-            if (not starts_with_ref)
-            {
-                write_command(*client.sink, Command::UPDATE_REFERENCE, first_chunk.entry_reference);
-                uint32_t zero_delta = 0;
-                client.sink->write(&zero_delta, sizeof(zero_delta));
+                std::memcpy(&first_word, client.ring[i].data.data(), sizeof(first_word));
+                if (first_word == (ESCAPE | Command::UPDATE_REFERENCE))
+                {
+                    start_idx = i;
+                    break;
+                }
             }
         }
 
-        for (auto const& chunk : client.ring)
+        if (start_idx == client.ring.size() and not client.ring.empty())
         {
-            if (not chunk.data.empty())
+            write_command(*client.sink, Command::UPDATE_REFERENCE, client.ring.front().entry_reference);
+            uint32_t zero_delta = 0;
+            client.sink->write(&zero_delta, sizeof(zero_delta));
+            start_idx = 0;
+        }
+
+        for (std::size_t i = start_idx; i < client.ring.size(); ++i)
+        {
+            if (not client.ring[i].data.empty())
             {
-                client.sink->write(chunk.data.data(), static_cast<int64_t>(chunk.data.size()));
+                client.sink->write(client.ring[i].data.data(), static_cast<int64_t>(client.ring[i].data.size()));
             }
         }
 
@@ -171,9 +211,7 @@ namespace rtm
             }
         };
 
-        auto fire_trigger = [&](nanoseconds absolute,
-                                uint8_t const* elem_start,
-                                uint8_t const* elem_end)
+        auto fire_trigger = [&](nanoseconds absolute, uint8_t const* elem_start, uint8_t const* elem_end)
         {
             current_chunk.data.insert(current_chunk.data.end(), elem_start, elem_end);
             current_chunk.sample_count++;
@@ -191,17 +229,17 @@ namespace rtm
             current_chunk.sample_count = 0;
         };
 
-        auto process_sample = [&](nanoseconds absolute,
-                                  uint8_t const* elem_start,
-                                  uint8_t const* elem_end) -> bool
+        auto process_sample = [&](nanoseconds absolute, uint8_t const* elem_start, uint8_t const* elem_end) -> bool
         {
             if (client.sample_parity == 0)
             {
                 if (client.has_prev_start and client.threshold.count() > 0)
                 {
-                    if (absolute - client.prev_start_absolute > client.threshold)
+                    nanoseconds jitter = absolute - client.prev_start_absolute;
+                    if (jitter > client.threshold)
                     {
                         client.pending_trigger = true;
+                        client.detected_jitter = jitter;
                     }
                 }
                 client.prev_start_absolute = absolute;
@@ -230,9 +268,7 @@ namespace rtm
             current_chunk.sample_count++;
             route(elem_start, static_cast<std::size_t>(elem_end - elem_start));
 
-            if (client.mode == Mode::RECORDING
-                and client.sample_parity == 0
-                and absolute >= client.recording_deadline)
+            if (client.mode == Mode::RECORDING and client.sample_parity == 0 and absolute >= client.recording_deadline)
             {
                 if (client.sink != nullptr)
                 {
@@ -273,6 +309,17 @@ namespace rtm
                     }
                     client.current_reference = nanoseconds(extract_data<uint64_t>(pos));
 
+                    // Split chunk at reference boundaries so each chunk is self-contained
+                    if (client.mode == Mode::BUFFERING and current_chunk.sample_count > 0)
+                    {
+                        client.ring_sample_count += current_chunk.sample_count;
+                        client.ring.push_back(std::move(current_chunk));
+                        evict_ring(client);
+                        current_chunk = Chunk{};
+                        current_chunk.sample_count = 0;
+                    }
+                    current_chunk.entry_reference = client.current_reference;
+
                     nanoseconds absolute = client.current_reference - client.start_time;
                     process_sample(absolute, elem_start, pos);
                     continue;
@@ -311,8 +358,7 @@ namespace rtm
         }
 
         std::size_t consumed = static_cast<std::size_t>(pos - client.buffer.data());
-        client.buffer.erase(client.buffer.begin(),
-            client.buffer.begin() + static_cast<ptrdiff_t>(consumed));
+        client.buffer.erase(client.buffer.begin(), client.buffer.begin() + static_cast<ptrdiff_t>(consumed));
 
         if (client.mode == Mode::BUFFERING and not current_chunk.data.empty())
         {
@@ -364,8 +410,7 @@ namespace rtm
             }
             else
             {
-                client.buffer.insert(client.buffer.end(),
-                    read_buf, read_buf + bytes_read);
+                client.buffer.insert(client.buffer.end(), read_buf, read_buf + bytes_read);
             }
 
             // --- Header parsing ---
@@ -394,13 +439,11 @@ namespace rtm
                 client.process_name = extract_string();
                 client.source_name = extract_string();
 
-                client.header_bytes.assign(client.buffer.begin(),
-                    client.buffer.begin() + static_cast<ptrdiff_t>(header_total));
-                client.buffer.erase(client.buffer.begin(),
-                    client.buffer.begin() + static_cast<ptrdiff_t>(header_total));
+                auto header_end = client.buffer.begin() + static_cast<ptrdiff_t>(header_total);
+                client.header_bytes.assign(client.buffer.begin(), header_end);
+                client.buffer.erase(client.buffer.begin(), header_end);
 
-                printf("[Recorder] Header parsed: %s_%s\n",
-                       client.process_name.c_str(), client.source_name.c_str());
+                printf("[Recorder] Header parsed: %s_%s\n", client.process_name.c_str(), client.source_name.c_str());
             }
 
             if (client.header_bytes.empty())
@@ -428,6 +471,7 @@ namespace rtm
 
                     if (raw & Command::UPDATE_REFERENCE)
                     {
+                        // Only peek at the data, do not consume it so it can be written later
                         decided = true;
                         break;
                     }
@@ -470,8 +514,7 @@ namespace rtm
                 }
 
                 std::size_t consumed = static_cast<std::size_t>(pos - client.buffer.data());
-                client.buffer.erase(client.buffer.begin(),
-                    client.buffer.begin() + static_cast<ptrdiff_t>(consumed));
+                client.buffer.erase(client.buffer.begin(), client.buffer.begin() + static_cast<ptrdiff_t>(consumed));
 
                 if (not decided)
                 {
@@ -504,7 +547,8 @@ namespace rtm
                         });
                     if (it != clients_.end())
                     {
-                        printf("[Recorder] !!! WARNING !!! Another client have the same name (%s)! Switching the sink to null IO\n", file_name.c_str());
+                        printf("[Recorder] !!! WARNING !!! Another client have the same name (%s)!"
+                               " Switching the sink to null IO\n", file_name.c_str());
                         client.sink = std::make_unique<NullIO>();
                     }
                     else
@@ -515,10 +559,9 @@ namespace rtm
 
                     client.sink->open(access::Mode::WRITE_ONLY | access::Mode::TRUNCATE);
 
-                    client.sink->write(client.header_bytes.data(),
-                        static_cast<int64_t>(client.header_bytes.size()));
+                    client.sink->write(client.header_bytes.data(), static_cast<int64_t>(client.header_bytes.size()));
 
-                    write_command(*client.sink, Command::UPDATE_PERIOD,   client.current_period);
+                    write_command(*client.sink, Command::UPDATE_PERIOD, client.current_period);
                     write_command(*client.sink, Command::UPDATE_PRIORITY, client.current_priority);
 
                     client.flush();
@@ -540,7 +583,6 @@ namespace rtm
         }
 
         clients_.erase(std::remove_if(clients_.begin(), clients_.end(),
-            [](Client const& client) { return client.io == nullptr; }),
-        clients_.end());
+            [](Client const& client) { return client.io == nullptr; }), clients_.end());
     }
 }

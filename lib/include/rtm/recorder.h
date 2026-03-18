@@ -67,6 +67,7 @@ namespace rtm
             nanoseconds prev_start_absolute{0};
             bool        has_prev_start{false};
             bool        pending_trigger{false};
+            nanoseconds detected_jitter{0};
 
             // Ring buffer (pre-event data) -- pair-aligned
             std::deque<Chunk> ring;

@@ -138,7 +138,7 @@ bool test_blackbox_trigger()
     parser.load_header();
 
     CHECK(parser.header().process == "test_process", "wrong process name");
-    CHECK(parser.header().name == "test_task", "wrong task name");
+    CHECK(parser.header().name.find("test_task@") == 0, "wrong task name (expected test_task@...)");
     CHECK(parser.header().start_time == START, "wrong start_time in blackbox file");
 
     bool loaded = parser.load_samples();
@@ -364,7 +364,7 @@ bool test_blackbox_file_header()
 
     CHECK(parser.header().version == 1, "wrong protocol version");
     CHECK(parser.header().process == "test_process", "wrong process name");
-    CHECK(parser.header().name == "test_task", "wrong task name");
+    CHECK(parser.header().name.find("test_task@") == 0, "wrong task name (expected test_task@...)");
     CHECK(parser.header().start_time == START, "wrong start_time");
 
     bool loaded = parser.load_samples();

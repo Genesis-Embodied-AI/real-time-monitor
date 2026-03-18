@@ -19,8 +19,13 @@ include(flags)
 enable_testing()
 
 option(BUILD_TOOLS      "Build tools" ON)
-option(BUILD_MONITOR    "Build monitor" ON)
 option(BUILD_TESTS      "Build tests" ON)
+
+if(CMAKE_CROSSCOMPILING)
+    option(BUILD_MONITOR "Build monitor" OFF)
+else()
+    option(BUILD_MONITOR "Build monitor" ON)
+endif()
 
 add_subdirectory(lib)
 
