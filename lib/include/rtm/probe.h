@@ -24,6 +24,7 @@ namespace rtm
 
         void update_priority(int32_t priority);
         void update_period(nanoseconds period);
+        void set_threshold(nanoseconds threshold);
         void log(nanoseconds timestamp = since_epoch());
         void flush();
 

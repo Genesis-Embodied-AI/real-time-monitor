@@ -85,7 +85,11 @@ namespace rtm
             .def("log_end", [](Probe& self)
                 {
                     self.log();
-                });
+                })
+            .def("set_threshold", [](Probe& self, uint64_t threshold_ns)
+                {
+                    self.set_threshold(nanoseconds{threshold_ns});
+                }, "threshold_ns"_a);
 
         nb::bind_vector<std::vector<float>>(m, "FVector");
         nb::bind_vector<std::vector<nanoseconds>>(m, "nsVector");
@@ -141,7 +145,10 @@ namespace rtm
             }, nb::arg("backlog") = 4);
 
         nb::class_<Recorder>(m, "Recorder")
-            .def(nb::init<std::string_view>(), nb::arg("recording_path"))
+            .def(nb::init<std::string_view, nanoseconds, nanoseconds>(),
+                 nb::arg("recording_path"),
+                 nb::arg("pre_duration") = 120s,
+                 nb::arg("post_duration") = 120s)
             .def("accept", [](Recorder& self, LocalListener& server)
             {
                 auto io = server.accept(access::Mode::NON_BLOCKING);

@@ -92,6 +92,7 @@ int main(int argc, char *argv[])
     probe.init("generator", "one_task",
                START, 1ms, 42,
                std::move(io));
+    probe.set_threshold(10ms);
 
     uint64_t period = 1;
     uint64_t save_period = 0;
