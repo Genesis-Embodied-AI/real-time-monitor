@@ -41,7 +41,7 @@ jobs:
 
     - name: Test
       run: |
-        ctest -V --test-dir build --output-on-failure
+        ctest --test-dir build --output-on-failure
 
     - name: Upload Build Artifact
       if: matrix.os == 'ubuntu-latest' && matrix.build_type == 'Release'

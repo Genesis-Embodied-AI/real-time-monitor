@@ -190,7 +190,7 @@ bool test_blackbox_multiple_triggers()
             {
                 offset += 5s;
             }
-            auto t = START + 20ms + nanoseconds(i * 100'000'000) + offset;
+            auto t = START + 20ms + nanoseconds(static_cast<int64_t>(i) * 100'000'000) + offset;
             probe.log(t);
             probe.log(t + 100us);
         }
