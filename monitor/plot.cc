@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <implot.h>
 
 #include "plot.h"
@@ -217,20 +218,30 @@ namespace rtm
                     const Point* closest_point = nullptr;
                     float best_dist = FLT_MAX;
 
-                    // Find nearest point across all series
+                    Point target{mouse.x, 0};
                     for (auto const& serie : series_) 
                     {
-                        for (auto const& pt : serie.serie()) 
+                        auto const& points = serie.serie();
+                        if (points.empty()) continue;
+
+                        auto it = std::lower_bound(points.begin(), points.end(), target,
+                            [](Point const& a, Point const& b) { return a.x < b.x; });
+
+                        int idx = static_cast<int>(std::distance(points.begin(), it));
+                        int start = std::max(0, idx - 1);
+                        int end = std::min(static_cast<int>(points.size()), idx + 2);
+
+                        for (int i = start; i < end; ++i)
                         {
-                            float dx = float(pt.x - mouse.x);
-                            float dy = float(pt.y - mouse.y);
+                            float dx = float(points[i].x - mouse.x);
+                            float dy = float(points[i].y - mouse.y);
                             float dist_square = dx*dx + dy*dy;
 
                             if (dist_square < best_dist) 
                             {
                                 best_dist = dist_square;
                                 closest_serie = &serie;
-                                closest_point = &pt;
+                                closest_point = &points[i];
                             }
                         }
                     }
