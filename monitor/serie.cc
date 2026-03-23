@@ -110,6 +110,7 @@ namespace rtm
     {
         if (serie_.empty())
         {
+            //TODO: Display something to say its empty?
             return false;
         }
 
@@ -159,6 +160,86 @@ namespace rtm
     }
 
 
+    static Point const* nearest_in(Point const* data, int count, double x)
+    {
+        if (count == 0)
+        {
+            return nullptr;
+        }
+
+        Point target{x, 0};
+        auto cmp = [](Point const& a, Point const& b) { return a.x < b.x; };
+        auto it = std::lower_bound(data, data + count, target, cmp);
+
+        int idx = static_cast<int>(it - data);
+        int start = std::max(0, idx - 1);
+        int end = std::min(count, idx + 2);
+
+        Point const* best = nullptr;
+        double best_dx = std::numeric_limits<double>::max();
+        for (int i = start; i < end; ++i)
+        {
+            double dx = std::abs(data[i].x - x);
+            if (dx < best_dx)
+            {
+                best_dx = dx;
+                best = &data[i];
+            }
+        }
+        return best;
+    }
+
+    Point const* Serie::find_nearest(double x, ImPlotRect const& limits) const
+    {
+        if (serie_.empty())
+        {
+            return nullptr;
+        }
+
+        if (not is_downsampled_ or limits.X.Size() >= SECTION_SIZE.count())
+        {
+            return nearest_in(serie_.data(), static_cast<int>(serie_.size()), x);
+        }
+
+        // Zoomed in: search the same sections that plot() displays
+        auto it = std::find_if(sections_.begin(), sections_.end(), [&](Section const& s)
+        {
+            return (s.min.count() > limits.X.Min) and (s.max.count() >= limits.X.Max);
+        });
+        if (it == sections_.end())
+        {
+            it = std::prev(sections_.end());
+        }
+        if (it != sections_.begin())
+        {
+            it--;
+        }
+
+        Point const* best = nullptr;
+        double best_dx = std::numeric_limits<double>::max();
+        for (int i = 0; i < 3; ++i)
+        {
+            Point const* candidate = nearest_in(it->points.data(),
+                static_cast<int>(it->points.size()), x);
+            if (candidate)
+            {
+                double dx = std::abs(candidate->x - x);
+                if (dx < best_dx)
+                {
+                    best_dx = dx;
+                    best = candidate;
+                }
+            }
+
+            it++;
+            if (it == sections_.end())
+            {
+                break;
+            }
+        }
+        return best;
+    }
+
     Statistics Serie::compute_statistics(double begin, double end) const
     {
         if (sections_.empty())
@@ -166,18 +247,14 @@ namespace rtm
             return Statistics{};
         }
 
-        // Search first and last section to process
-        auto it_first = std::find_if(sections_.begin(), sections_.end(), [&](Section const& s)
-        {
-            return (s.min.count() <= begin) and (begin < s.max.count());
-        });
+        // Binary search for first section containing 'begin'
+        auto it_first = std::lower_bound(sections_.begin(), sections_.end(), begin,
+            [](Section const& s, double val) { return s.max.count() <= val; });
 
-        auto it_last = std::find_if(sections_.begin(), sections_.end(), [&](Section const& s)
-        {
-            return (s.min.count() <= end) and (end < s.max.count());
-        });
+        // Binary search for last section containing 'end'
+        auto it_last = std::lower_bound(sections_.begin(), sections_.end(), end,
+            [](Section const& s, double val) { return s.max.count() < val; });
 
-        //
         if (it_first == sections_.end())
         {
             if (begin < sections_.front().min.count())
@@ -205,23 +282,17 @@ namespace rtm
         auto const& first_section = it_first->points;
         auto const& last_section  = it_last->points;
 
-        // first section
-        // -> search for the begining
-        auto first_point = std::find_if(first_section.begin(), first_section.end(), [&](Point const& p)
-        {
-            return (begin <= p.x);
-        });
+        Point begin_pt{begin, 0};
+        Point end_pt{end, 0};
+        auto pt_cmp = [](Point const& a, Point const& b) { return a.x < b.x; };
+
+        auto first_point = std::lower_bound(first_section.begin(), first_section.end(), begin_pt, pt_cmp);
         if (first_point == first_section.end())
         {
             first_point = first_section.begin();
         }
 
-        // last section
-        // -> search for the end
-        auto last_point = std::find_if(last_section.begin(), last_section.end(), [&](Point const& p)
-        {
-            return (end <= p.x);
-        });
+        auto last_point = std::lower_bound(last_section.begin(), last_section.end(), end_pt, pt_cmp);
         if (last_point == last_section.end())
         {
             last_point = last_section.end() - 1;
@@ -232,8 +303,8 @@ namespace rtm
         int range_size = 0;
         double accumulated = 0;
         double square_accumulated = 0;
-        stats.min = first_section.front().y;
-        stats.max = first_section.front().y;
+        stats.min = std::numeric_limits<double>::max();
+        stats.max = std::numeric_limits<double>::lowest();
 
         auto compute_section = [&](std::vector<Point>::const_iterator section_begin, std::vector<Point>::const_iterator section_end)
         {
@@ -249,10 +320,15 @@ namespace rtm
 
         auto finalize = [&]()
         {
-            float range_f = static_cast<float>(range_size);
-            stats.average = accumulated / range_f;
-            stats.rms = std::sqrt(square_accumulated / range_f);
-            stats.standard_deviation = std::sqrt((square_accumulated / range_f) - stats.average * stats.average);
+            if (range_size == 0)
+            {
+                return Statistics{};
+            }
+            stats.valid = true;
+            double range_d = static_cast<double>(range_size);
+            stats.average = accumulated / range_d;
+            stats.rms = std::sqrt(square_accumulated / range_d);
+            stats.standard_deviation = std::sqrt((square_accumulated / range_d) - stats.average * stats.average);
             return stats;
         };
 

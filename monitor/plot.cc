@@ -5,51 +5,53 @@
 
 namespace rtm
 {
-    int time_formatter(double value, char* buff, int size, void* user_data)
+    int format_duration(char* buff, int size, seconds_f duration, int precision = 3)
     {
-        double to_seconds = *static_cast<double*>(user_data);
-        value *= to_seconds;
-        double abs_value = std::abs(value);
-        int written = 0;
+        double seconds = duration.count();
+        double abs_val = std::abs(seconds);
 
-        if (abs_value >= 31536000)  // Years (365 days)
+        if (abs_val >= 31536000)  // Years (365 days)
         {
-            written = snprintf(buff, size, "%.2fy", value / 31536000);
+            return snprintf(buff, size, "%.*f y", precision, seconds / 31536000);
         }
-        else if (abs_value >= 2592000)  // Months (30 days)
+        else if (abs_val >= 2592000)  // Months (30 days)
         {
-            written = snprintf(buff, size, "%.1fmo", value / 2592000);
+            return snprintf(buff, size, "%.*f mo", precision, seconds / 2592000);
         }
-        else if (abs_value >= 86400)  // Days
+        else if (abs_val >= 86400)  // Days
         {
-            written = snprintf(buff, size, "%.1fd", value / 86400);
+            return snprintf(buff, size, "%.*f d", precision, seconds / 86400);
         }
-        else if (abs_value >= 3600)  // Hours
+        else if (abs_val >= 3600)  // Hours
         {
-            written = snprintf(buff, size, "%.1fh", value / 3600);
+            return snprintf(buff, size, "%.*f h", precision, seconds / 3600);
         }
-        else if (abs_value >= 60)  // Minutes
+        else if (abs_val >= 60)  // Minutes
         {
-            written = snprintf(buff, size, "%.1fmin", value / 60);
+            return snprintf(buff, size, "%.*f min", precision, seconds / 60);
         }
-        else if (abs_value >= 1)  // Seconds
+        else if (abs_val >= 1)  // Seconds
         {
-            written = snprintf(buff, size, "%.2fs", value);
+            return snprintf(buff, size, "%.*f s", precision, seconds);
         }
-        else if (abs_value >= 1e-3)  // Milliseconds
+        else if (abs_val >= 1e-3)  // Milliseconds
         {
-            written = snprintf(buff, size, "%.2fms", value * 1e3);
+            return snprintf(buff, size, "%.*f ms", precision, seconds * 1e3);
         }
-        else if (abs_value >= 1e-6)  // Microseconds
+        else if (abs_val >= 1e-6)  // Microseconds
         {
-            written = snprintf(buff, size, "%.2fus", value * 1e6);
+            return snprintf(buff, size, "%.*f us", precision, seconds * 1e6);
         }
         else  // Nanoseconds
         {
-            written = snprintf(buff, size, "%.2fns", value * 1e9);
+            return snprintf(buff, size, "%.*f ns", precision, seconds * 1e9);
         }
+    }
 
-        return written;
+    int time_formatter(double value, char* buff, int size, void* user_data)
+    {
+        double to_seconds = *static_cast<double*>(user_data);
+        return format_duration(buff, size, seconds_f{value * to_seconds}, 2);
     }
 
     Plot::Plot(std::string const& name, std::string const& legend)
@@ -91,6 +93,11 @@ namespace rtm
         {
             ImGui::BeginChild("Sidebar", ImVec2(stats_bar_width, available_height), true);
             ImGui::Text("Statistics");
+            if (stats_future_.valid())
+            {
+                ImGui::SameLine();
+                ImGui::TextColored(ImVec4(1.0f, 0.6f, 0.0f, 1.0f), "(computing...)");
+            }
             ImGui::Separator();
 
             // Display stats for each series
@@ -105,11 +112,24 @@ namespace rtm
                 ImGui::SetNextItemOpen(true, ImGuiCond_Once);
                 if (ImGui::TreeNode(unique_id.c_str()))
                 {
-                    ImGui::Text("Min:     %.3f", stats.min);
-                    ImGui::Text("Max:     %.3f", stats.max);
-                    ImGui::Text("Average: %.3f", stats.average);
-                    ImGui::Text("RMS:     %.3f", stats.rms);
-                    ImGui::Text("Std Dev: %.3f", stats.standard_deviation);
+                    if (stats.valid)
+                    {
+                        char buf[32];
+                        format_duration(buf, sizeof(buf), milliseconds_f{stats.min});
+                        ImGui::Text("Min:     %s", buf);
+                        format_duration(buf, sizeof(buf), milliseconds_f{stats.max});
+                        ImGui::Text("Max:     %s", buf);
+                        format_duration(buf, sizeof(buf), milliseconds_f{stats.average});
+                        ImGui::Text("Average: %s", buf);
+                        format_duration(buf, sizeof(buf), milliseconds_f{stats.rms});
+                        ImGui::Text("RMS:     %s", buf);
+                        format_duration(buf, sizeof(buf), milliseconds_f{stats.standard_deviation});
+                        ImGui::Text("Std Dev: %s", buf);
+                    }
+                    else
+                    {
+                        ImGui::TextDisabled("Out of view");
+                    }
 
                     ImGui::TreePop();
                 }
@@ -213,35 +233,23 @@ namespace rtm
                 if (ImPlot::IsPlotHovered()) 
                 {
                     ImPlotPoint mouse = ImPlot::GetPlotMousePos();
+                    auto limits = ImPlot::GetPlotLimits();
 
                     const rtm::Serie* closest_serie = nullptr;
                     const Point* closest_point = nullptr;
-                    float best_dist = FLT_MAX;
+                    double best_dx = std::numeric_limits<double>::max();
 
-                    Point target{mouse.x, 0};
                     for (auto const& serie : series_) 
                     {
-                        auto const& points = serie.serie();
-                        if (points.empty()) continue;
-
-                        auto it = std::lower_bound(points.begin(), points.end(), target,
-                            [](Point const& a, Point const& b) { return a.x < b.x; });
-
-                        int idx = static_cast<int>(std::distance(points.begin(), it));
-                        int start = std::max(0, idx - 1);
-                        int end = std::min(static_cast<int>(points.size()), idx + 2);
-
-                        for (int i = start; i < end; ++i)
+                        Point const* pt = serie.find_nearest(mouse.x, limits);
+                        if (pt)
                         {
-                            float dx = float(points[i].x - mouse.x);
-                            float dy = float(points[i].y - mouse.y);
-                            float dist_square = dx*dx + dy*dy;
-
-                            if (dist_square < best_dist) 
+                            double dx = std::abs(pt->x - mouse.x);
+                            if (dx < best_dx)
                             {
-                                best_dist = dist_square;
+                                best_dx = dx;
                                 closest_serie = &serie;
-                                closest_point = &points[i];
+                                closest_point = pt;
                             }
                         }
                     }
@@ -257,7 +265,9 @@ namespace rtm
                         ImGui::EndTooltip();
 
                         // Marker on nearest point
-                        ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 6, closest_serie->color());
+                        ImVec4 no_fill = ImVec4(0, 0, 0, 0);
+                        ImPlot::SetNextMarkerStyle(ImPlotMarker_Cross, 12,
+                            no_fill, 2.0f, closest_serie->color());
                         ImPlot::PlotScatter("##closest", &closest_point->x, &closest_point->y, 1);
                     }
                 }
@@ -307,21 +317,33 @@ namespace rtm
 
     void Plot::compute_stats_on_view_update()
     {
-        // Compute when limits changed
-        auto limits = ImPlot::GetPlotLimits();
-        if (not ImGui::IsMouseDragging(0) and
-            (limits.X.Min != old_limits_.X.Min or
-             limits.X.Max != old_limits_.X.Max or
-             limits.Y.Min != old_limits_.Y.Min or
-             limits.Y.Max != old_limits_.Y.Max))
+        if (stats_future_.valid() and
+            stats_future_.wait_for(0s) == std::future_status::ready)
         {
-            stats_.clear();
-            for (auto const& serie : series_)
-            {
-                Statistics stats = serie.compute_statistics(limits.X.Min, limits.X.Max);
-                stats_.push_back(stats);
-            }
+            stats_ = stats_future_.get();
+        }
+
+        auto limits = ImPlot::GetPlotLimits();
+        if (not stats_future_.valid() and
+            not ImGui::IsMouseDragging(0) and
+            (limits.X.Min != old_limits_.X.Min or
+             limits.X.Max != old_limits_.X.Max))
+        {
             old_limits_ = limits;
+            double x_min = limits.X.Min;
+            double x_max = limits.X.Max;
+
+            stats_future_ = std::async(std::launch::async,
+                [this, x_min, x_max]()
+                {
+                    std::vector<Statistics> result;
+                    result.reserve(series_.size());
+                    for (auto const& serie : series_)
+                    {
+                        result.push_back(serie.compute_statistics(x_min, x_max));
+                    }
+                    return result;
+                });
         }
     }
 }

@@ -14,11 +14,12 @@ namespace rtm
 
     struct Statistics
     {
-        double min;
-        double max;
-        double average;
-        double rms;
-        double standard_deviation;
+        bool   valid{false};
+        double min{0};
+        double max{0};
+        double average{0};
+        double rms{0};
+        double standard_deviation{0};
     };
 
     class Serie
@@ -28,10 +29,10 @@ namespace rtm
         ~Serie() = default;
 
         bool plot() const;
+        Point const* find_nearest(double x, ImPlotRect const& limits) const;
 
         std::string const& name() const { return name_; }
         Statistics compute_statistics(double begin, double end) const;
-        std::vector<Point> const& serie() const { return serie_; }
         ImVec4 const& color() const { return color_; }
 
     private:
