@@ -60,6 +60,17 @@ namespace rtm
 
     void MainWindow::draw()
     {
+        if (ImGui::BeginMenuBar())
+        {
+            if (ImGui::BeginMenu("Settings"))
+            {
+                ImGui::MenuItem("Software anti-aliasing", nullptr,
+                    &ImGui::GetStyle().AntiAliasedLines);
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenuBar();
+        }
+
         if (ImGui::BeginTabBar("GraphsTabBar"))
         {
             diff_.draw();
