@@ -58,7 +58,7 @@ namespace rtm
 
     Serie::Serie(std::string const& name, std::vector<Point>&& raw_serie, ImVec4 color)
     {
-        constexpr uint32_t DECIMATION = 200'000;
+        constexpr uint32_t DECIMATION = 8'000;
 
         nanoseconds t1 = since_epoch();
 
@@ -83,25 +83,46 @@ namespace rtm
         color_  = color;
     }
 
+    void Serie::plot_visible(ImPlotRect const& limits, Point const* data, int count) const
+    {
+        auto begin = data;
+        auto end   = data + count;
+
+        Point lo{limits.X.Min, 0};
+        Point hi{limits.X.Max, 0};
+        auto cmp = [](Point const& a, Point const& b) { return a.x < b.x; };
+
+        auto vis_begin = std::lower_bound(begin, end, lo, cmp);
+        auto vis_end   = std::upper_bound(vis_begin, end, hi, cmp);
+
+        if (vis_begin != begin) --vis_begin;
+        if (vis_end   != end)   ++vis_end;
+
+        int vis_count = static_cast<int>(vis_end - vis_begin);
+        if (vis_count > 0)
+        {
+            ImPlot::PlotLine(name_.c_str(), &vis_begin->x, &vis_begin->y,
+                vis_count, 0, 0, sizeof(Point));
+        }
+    }
+
     bool Serie::plot() const
     {
         if (serie_.empty())
         {
-            //TODO: Display something to say its empty?
             return false;
         }
 
         ImPlot::SetNextLineStyle(color_);
 
+        auto limits = ImPlot::GetPlotLimits();
+
         if (not is_downsampled_)
         {
-            // skip smart display: the serie is small enough
-            ImPlot::PlotLine(name_.c_str(), &serie_.at(0).x, &serie_.at(0).y, static_cast<int>(serie_.size()),
-                0, 0, sizeof(Point));
+            plot_visible(limits, serie_.data(), static_cast<int>(serie_.size()));
             return is_downsampled_;
         }
 
-        auto limits = ImPlot::GetPlotLimits();
         if (limits.X.Size() < SECTION_SIZE.count())
         {
             auto it = std::find_if(sections_.begin(), sections_.end(), [&](Section const& s)
@@ -110,10 +131,8 @@ namespace rtm
             });
             if (it == sections_.end())
             {
-                // Viewport is past the last section boundary — clamp to last
                 it = std::prev(sections_.end());
             }
-            // display 3 sections (before, here and after if possible)
             if (it != sections_.begin())
             {
                 it--;
@@ -121,9 +140,7 @@ namespace rtm
 
             for (int i = 0; i < 3; ++i)
             {
-                Point const* data = it->points.data();
-                ImPlot::PlotLine(name_.c_str(), &data->x, &data->y, static_cast<int>(it->points.size()),
-                    0, 0, sizeof(Point));
+                plot_visible(limits, it->points.data(), static_cast<int>(it->points.size()));
 
                 it++;
                 if (it == sections_.end())
@@ -136,9 +153,7 @@ namespace rtm
         }
         else
         {
-            // downsampled
-            ImPlot::PlotLine(name_.c_str(), &serie_.at(0).x, &serie_.at(0).y, static_cast<int>(serie_.size()),
-                0, 0, sizeof(Point));
+            plot_visible(limits, serie_.data(), static_cast<int>(serie_.size()));
             return is_downsampled_;
         }
     }

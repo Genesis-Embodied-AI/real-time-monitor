@@ -2,6 +2,7 @@
 #define RTM_MONITOR_SERIE_H
 
 #include <imgui.h>
+#include <implot.h>
 #include <unordered_map>
 
 #include "rtm/data.h"
@@ -42,6 +43,7 @@ namespace rtm
             std::vector<Point> points;
         };
         void split_serie(std::vector<Section>& sections, std::vector<Point> const& flat);
+        void plot_visible(ImPlotRect const& limits, Point const* data, int count) const;
 
         ImVec4 color_;
 
