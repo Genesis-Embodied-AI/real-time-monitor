@@ -3,6 +3,7 @@
 
 #include <filesystem>
 #include <functional>
+#include <future>
 #include <implot.h>
 
 #include "serie.h"
@@ -27,6 +28,7 @@ namespace rtm
 
         std::vector<Serie> series_;
         std::vector<Statistics> stats_;
+        std::future<std::vector<Statistics>> stats_future_;
         ImPlotRect old_limits_;
         milliseconds_f max_y_{-1ns};
         bool is_downsampled_{false};

@@ -2,6 +2,7 @@
 #define RTM_MONITOR_SERIE_H
 
 #include <imgui.h>
+#include <implot.h>
 #include <unordered_map>
 
 #include "rtm/data.h"
@@ -13,11 +14,12 @@ namespace rtm
 
     struct Statistics
     {
-        double min;
-        double max;
-        double average;
-        double rms;
-        double standard_deviation;
+        bool   valid{false};
+        double min{0};
+        double max{0};
+        double average{0};
+        double rms{0};
+        double standard_deviation{0};
     };
 
     class Serie
@@ -27,10 +29,10 @@ namespace rtm
         ~Serie() = default;
 
         bool plot() const;
+        Point const* find_nearest(double x, ImPlotRect const& limits) const;
 
         std::string const& name() const { return name_; }
         Statistics compute_statistics(double begin, double end) const;
-        std::vector<Point> const& serie() const { return serie_; }
         ImVec4 const& color() const { return color_; }
 
     private:
@@ -42,6 +44,7 @@ namespace rtm
             std::vector<Point> points;
         };
         void split_serie(std::vector<Section>& sections, std::vector<Point> const& flat);
+        void plot_visible(ImPlotRect const& limits, Point const* data, int count) const;
 
         ImVec4 color_;
 

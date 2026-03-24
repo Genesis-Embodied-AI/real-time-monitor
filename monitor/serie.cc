@@ -58,7 +58,7 @@ namespace rtm
 
     Serie::Serie(std::string const& name, std::vector<Point>&& raw_serie, ImVec4 color)
     {
-        constexpr uint32_t DECIMATION = 200'000;
+        constexpr uint32_t DECIMATION = 8'000;
 
         nanoseconds t1 = since_epoch();
 
@@ -83,6 +83,29 @@ namespace rtm
         color_  = color;
     }
 
+    void Serie::plot_visible(ImPlotRect const& limits, Point const* data, int count) const
+    {
+        auto begin = data;
+        auto end   = data + count;
+
+        Point lo{limits.X.Min, 0};
+        Point hi{limits.X.Max, 0};
+        auto cmp = [](Point const& a, Point const& b) { return a.x < b.x; };
+
+        auto vis_begin = std::lower_bound(begin, end, lo, cmp);
+        auto vis_end   = std::upper_bound(vis_begin, end, hi, cmp);
+
+        if (vis_begin != begin) --vis_begin;
+        if (vis_end   != end)   ++vis_end;
+
+        int vis_count = static_cast<int>(vis_end - vis_begin);
+        if (vis_count > 0)
+        {
+            ImPlot::PlotLine(name_.c_str(), &vis_begin->x, &vis_begin->y,
+                vis_count, 0, 0, sizeof(Point));
+        }
+    }
+
     bool Serie::plot() const
     {
         if (serie_.empty())
@@ -93,15 +116,14 @@ namespace rtm
 
         ImPlot::SetNextLineStyle(color_);
 
+        auto limits = ImPlot::GetPlotLimits();
+
         if (not is_downsampled_)
         {
-            // skip smart display: the serie is small enough
-            ImPlot::PlotLine(name_.c_str(), &serie_.at(0).x, &serie_.at(0).y, static_cast<int>(serie_.size()),
-                0, 0, sizeof(Point));
+            plot_visible(limits, serie_.data(), static_cast<int>(serie_.size()));
             return is_downsampled_;
         }
 
-        auto limits = ImPlot::GetPlotLimits();
         if (limits.X.Size() < SECTION_SIZE.count())
         {
             auto it = std::find_if(sections_.begin(), sections_.end(), [&](Section const& s)
@@ -110,10 +132,8 @@ namespace rtm
             });
             if (it == sections_.end())
             {
-                // Viewport is past the last section boundary — clamp to last
                 it = std::prev(sections_.end());
             }
-            // display 3 sections (before, here and after if possible)
             if (it != sections_.begin())
             {
                 it--;
@@ -121,9 +141,7 @@ namespace rtm
 
             for (int i = 0; i < 3; ++i)
             {
-                Point const* data = it->points.data();
-                ImPlot::PlotLine(name_.c_str(), &data->x, &data->y, static_cast<int>(it->points.size()),
-                    0, 0, sizeof(Point));
+                plot_visible(limits, it->points.data(), static_cast<int>(it->points.size()));
 
                 it++;
                 if (it == sections_.end())
@@ -136,13 +154,91 @@ namespace rtm
         }
         else
         {
-            // downsampled
-            ImPlot::PlotLine(name_.c_str(), &serie_.at(0).x, &serie_.at(0).y, static_cast<int>(serie_.size()),
-                0, 0, sizeof(Point));
+            plot_visible(limits, serie_.data(), static_cast<int>(serie_.size()));
             return is_downsampled_;
         }
     }
 
+
+    static Point const* nearest_in(Point const* data, int count, double x)
+    {
+        if (count == 0)
+        {
+            return nullptr;
+        }
+
+        Point target{x, 0};
+        auto cmp = [](Point const& a, Point const& b) { return a.x < b.x; };
+        auto it = std::lower_bound(data, data + count, target, cmp);
+
+        int idx = static_cast<int>(it - data);
+        int start = std::max(0, idx - 1);
+        int end = std::min(count, idx + 2);
+
+        Point const* best = nullptr;
+        double best_dx = std::numeric_limits<double>::max();
+        for (int i = start; i < end; ++i)
+        {
+            double dx = std::abs(data[i].x - x);
+            if (dx < best_dx)
+            {
+                best_dx = dx;
+                best = &data[i];
+            }
+        }
+        return best;
+    }
+
+    Point const* Serie::find_nearest(double x, ImPlotRect const& limits) const
+    {
+        if (serie_.empty())
+        {
+            return nullptr;
+        }
+
+        if (not is_downsampled_ or limits.X.Size() >= SECTION_SIZE.count())
+        {
+            return nearest_in(serie_.data(), static_cast<int>(serie_.size()), x);
+        }
+
+        // Zoomed in: search the same sections that plot() displays
+        auto it = std::find_if(sections_.begin(), sections_.end(), [&](Section const& s)
+        {
+            return (s.min.count() > limits.X.Min) and (s.max.count() >= limits.X.Max);
+        });
+        if (it == sections_.end())
+        {
+            it = std::prev(sections_.end());
+        }
+        if (it != sections_.begin())
+        {
+            it--;
+        }
+
+        Point const* best = nullptr;
+        double best_dx = std::numeric_limits<double>::max();
+        for (int i = 0; i < 3; ++i)
+        {
+            Point const* candidate = nearest_in(it->points.data(),
+                static_cast<int>(it->points.size()), x);
+            if (candidate)
+            {
+                double dx = std::abs(candidate->x - x);
+                if (dx < best_dx)
+                {
+                    best_dx = dx;
+                    best = candidate;
+                }
+            }
+
+            it++;
+            if (it == sections_.end())
+            {
+                break;
+            }
+        }
+        return best;
+    }
 
     Statistics Serie::compute_statistics(double begin, double end) const
     {
@@ -151,18 +247,14 @@ namespace rtm
             return Statistics{};
         }
 
-        // Search first and last section to process
-        auto it_first = std::find_if(sections_.begin(), sections_.end(), [&](Section const& s)
-        {
-            return (s.min.count() <= begin) and (begin < s.max.count());
-        });
+        // Binary search for first section containing 'begin'
+        auto it_first = std::lower_bound(sections_.begin(), sections_.end(), begin,
+            [](Section const& s, double val) { return s.max.count() <= val; });
 
-        auto it_last = std::find_if(sections_.begin(), sections_.end(), [&](Section const& s)
-        {
-            return (s.min.count() <= end) and (end < s.max.count());
-        });
+        // Binary search for last section containing 'end'
+        auto it_last = std::lower_bound(sections_.begin(), sections_.end(), end,
+            [](Section const& s, double val) { return s.max.count() < val; });
 
-        //
         if (it_first == sections_.end())
         {
             if (begin < sections_.front().min.count())
@@ -190,23 +282,17 @@ namespace rtm
         auto const& first_section = it_first->points;
         auto const& last_section  = it_last->points;
 
-        // first section
-        // -> search for the begining
-        auto first_point = std::find_if(first_section.begin(), first_section.end(), [&](Point const& p)
-        {
-            return (begin <= p.x);
-        });
+        Point begin_pt{begin, 0};
+        Point end_pt{end, 0};
+        auto pt_cmp = [](Point const& a, Point const& b) { return a.x < b.x; };
+
+        auto first_point = std::lower_bound(first_section.begin(), first_section.end(), begin_pt, pt_cmp);
         if (first_point == first_section.end())
         {
             first_point = first_section.begin();
         }
 
-        // last section
-        // -> search for the end
-        auto last_point = std::find_if(last_section.begin(), last_section.end(), [&](Point const& p)
-        {
-            return (end <= p.x);
-        });
+        auto last_point = std::lower_bound(last_section.begin(), last_section.end(), end_pt, pt_cmp);
         if (last_point == last_section.end())
         {
             last_point = last_section.end() - 1;
@@ -217,8 +303,8 @@ namespace rtm
         int range_size = 0;
         double accumulated = 0;
         double square_accumulated = 0;
-        stats.min = first_section.front().y;
-        stats.max = first_section.front().y;
+        stats.min = std::numeric_limits<double>::max();
+        stats.max = std::numeric_limits<double>::lowest();
 
         auto compute_section = [&](std::vector<Point>::const_iterator section_begin, std::vector<Point>::const_iterator section_end)
         {
@@ -234,10 +320,15 @@ namespace rtm
 
         auto finalize = [&]()
         {
-            float range_f = static_cast<float>(range_size);
-            stats.average = accumulated / range_f;
-            stats.rms = std::sqrt(square_accumulated / range_f);
-            stats.standard_deviation = std::sqrt((square_accumulated / range_f) - stats.average * stats.average);
+            if (range_size == 0)
+            {
+                return Statistics{};
+            }
+            stats.valid = true;
+            double range_d = static_cast<double>(range_size);
+            stats.average = accumulated / range_d;
+            stats.rms = std::sqrt(square_accumulated / range_d);
+            stats.standard_deviation = std::sqrt((square_accumulated / range_d) - stats.average * stats.average);
             return stats;
         };
 

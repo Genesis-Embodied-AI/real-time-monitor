@@ -71,6 +71,7 @@ int main(int argc, char* argv[])
 #endif
 
     // Create window with graphics context
+    glfwWindowHint(GLFW_SAMPLES, 4);
     float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor()); // Valid on GLFW 3.3+ only
     GLFWwindow* window = glfwCreateWindow((int)(1280 * main_scale), (int)(800 * main_scale), "Real Time Monitor", nullptr, nullptr);
     if (window == nullptr)
@@ -79,6 +80,19 @@ int main(int argc, char* argv[])
     }
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1); // Enable vsync
+
+    GLint max_samples = 0;
+    glGetIntegerv(GL_MAX_SAMPLES, &max_samples);
+    bool hw_msaa = (max_samples >= 4);
+    if (hw_msaa)
+    {
+        glEnable(GL_MULTISAMPLE);
+        printf("Hardware MSAA enabled (%d samples max)\n", max_samples);
+    }
+    else
+    {
+        printf("Hardware MSAA not supported (max samples: %d), using software anti-aliasing\n", max_samples);
+    }
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -99,6 +113,7 @@ int main(int argc, char* argv[])
     ImGuiStyle& style = ImGui::GetStyle();
     style.ScaleAllSizes(main_scale);        // Bake a fixed style scale. (until we have a solution for dynamic style scaling, changing this requires resetting Style + calling this again)
     style.FontScaleDpi = main_scale;        // Set initial font scale. (using io.ConfigDpiScaleFonts=true makes this unnecessary. We leave both here for documentation purpose)
+    style.AntiAliasedLines = not hw_msaa;
 
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -145,7 +160,7 @@ int main(int argc, char* argv[])
         // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
         // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
         // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-        glfwPollEvents();
+        glfwWaitEventsTimeout(1.0 / 30.0);
         if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0)
         {
             ImGui_ImplGlfw_Sleep(10);
@@ -166,7 +181,8 @@ int main(int argc, char* argv[])
                     ImGuiWindowFlags_NoTitleBar |
                     ImGuiWindowFlags_NoResize   |
                     ImGuiWindowFlags_NoMove     |
-                    ImGuiWindowFlags_NoCollapse);
+                    ImGuiWindowFlags_NoCollapse |
+                    ImGuiWindowFlags_MenuBar);
 
         main_window.draw();
 
