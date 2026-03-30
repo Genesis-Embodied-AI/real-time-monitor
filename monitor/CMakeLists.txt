@@ -1,4 +1,5 @@
 find_package(imgui REQUIRED)
+find_package(argparse REQUIRED)
 
 # Build GLFW for source
 # ---- GLFW options (must be set BEFORE FetchContent_MakeAvailable) ----
@@ -67,7 +68,7 @@ set(MONITOR_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/serie.cc
     )
 add_executable(rtm_gui ${MONITOR_SRCS})
-target_link_libraries(rtm_gui PRIVATE implot rtm)
+target_link_libraries(rtm_gui PRIVATE implot rtm argparse::argparse)
 
 if (SKBUILD)
     install(TARGETS rtm_gui DESTINATION ${SKBUILD_SCRIPTS_DIR})

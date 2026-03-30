@@ -7,20 +7,26 @@
 
 namespace rtm
 {
-    void MainWindow::load_dataset(std::filesystem::path const& folder)
+    void MainWindow::load_dataset(std::vector<std::filesystem::path> const& inputs)
     {
         std::vector<std::string> detected_files;
-        for (auto const& entry : std::filesystem::directory_iterator(folder))
+        for (auto const& input : inputs)
         {
-            if (entry.is_regular_file())
+            if (std::filesystem::is_directory(input))
             {
-                if (entry.path().extension() == ".tick")
+                for (auto const& entry : std::filesystem::directory_iterator(input))
                 {
-                    detected_files.push_back(entry.path().string());
+                    if (entry.is_regular_file() && entry.path().extension() == ".tick")
+                        detected_files.push_back(entry.path().string());
                 }
+            }
+            else if (std::filesystem::is_regular_file(input) && input.extension() == ".tick")
+            {
+                detected_files.push_back(input.string());
             }
         }
         std::sort(detected_files.begin(), detected_files.end());
+        detected_files.erase(std::unique(detected_files.begin(), detected_files.end()), detected_files.end());
 
         for (auto const& entry : detected_files)
         {
