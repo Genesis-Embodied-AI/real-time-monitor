@@ -1,6 +1,7 @@
 #ifndef RTM_MONITOR_MAIN_WINDOW_H
 #define RTM_MONITOR_MAIN_WINDOW_H
 
+#include <vector>
 #include "plot.h"
 
 namespace rtm
@@ -8,7 +9,7 @@ namespace rtm
     class MainWindow
     {
     public:
-        void load_dataset(std::filesystem::path const& folder);
+        void load_dataset(std::vector<std::filesystem::path> const& inputs);
 
         void draw();
 

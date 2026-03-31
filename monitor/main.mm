@@ -21,6 +21,11 @@
 #import <Metal/Metal.h>
 #import <QuartzCore/QuartzCore.h>
 
+#include <argparse/argparse.hpp>
+#include <glob.h>
+#include <filesystem>
+#include <vector>
+
 #include "main_window.h"
 
 static void glfw_error_callback(int error, const char* description)
@@ -30,6 +35,50 @@ static void glfw_error_callback(int error, const char* description)
 
 int main(int argc, char* argv[])
 {
+    argparse::ArgumentParser parser("rtm_gui");
+    parser.add_argument("inputs")
+        .help("files (.tick), folders, or glob patterns — defaults to current directory")
+        .nargs(argparse::nargs_pattern::any);
+
+    try
+    {
+        parser.parse_args(argc, argv);
+    }
+    catch (const std::runtime_error& e)
+    {
+        fprintf(stderr, "%s\n%s\n", e.what(), parser.help().str().c_str());
+        return 1;
+    }
+
+    auto raw_inputs = parser.get<std::vector<std::string>>("inputs");
+    std::vector<std::filesystem::path> inputs;
+    if (raw_inputs.empty())
+    {
+        inputs.push_back(".");
+    }
+    else
+    {
+        for (auto const& arg : raw_inputs)
+        {
+            glob_t g{};
+            if (glob(arg.c_str(), GLOB_TILDE | GLOB_NOCHECK, nullptr, &g) == 0)
+            {
+                for (size_t j = 0; j < g.gl_pathc; ++j)
+                    inputs.emplace_back(g.gl_pathv[j]);
+            }
+            globfree(&g);
+        }
+    }
+
+    for (auto const& path : inputs)
+    {
+        if (not std::filesystem::exists(path))
+        {
+            fprintf(stderr, "Error: '%s' does not exist\n", path.c_str());
+            return 1;
+        }
+    }
+
     glfwSetErrorCallback(glfw_error_callback);
     if (not glfwInit())
     {
@@ -103,14 +152,7 @@ int main(int argc, char* argv[])
     float clear_color[4] = {0.45f, 0.55f, 0.60f, 1.00f};
 
     rtm::MainWindow main_window;
-    if (argc == 1)
-    {
-        main_window.load_dataset(".");
-    }
-    else
-    {
-        main_window.load_dataset(argv[1]);
-    }
+    main_window.load_dataset(inputs);
 
     // Main loop
     while (not glfwWindowShouldClose(window))
