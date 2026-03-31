@@ -8,5 +8,4 @@ CMakeDeps
 
 [options]
 glfw*:with_wayland=True
-glfw*:with_x11=True
-glfw*:vulkan_static=True
+glfw*:with_x11=False
