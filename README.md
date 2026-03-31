@@ -35,7 +35,7 @@ The GUI is based on [GLFW](https://www.glfw.org/), which requires platform-speci
 
 - **Linux**: The following system libraries are required:
   ```bash
-  sudo apt-get install libwayland-dev libxkbcommon-dev
+  sudo apt-get install libwayland-dev libxkbcommon-dev libgl-dev
   ```
   (On Debian/Ubuntu systems)
 

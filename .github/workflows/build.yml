@@ -25,7 +25,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update -y
-        sudo apt-get install -y libwayland-dev libxkbcommon-dev
+        sudo apt-get install -y libwayland-dev libxkbcommon-dev libgl-dev
 
     - name: Setup build env
       run: |
