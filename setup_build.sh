@@ -218,11 +218,8 @@ else
         echo "OSX_ARCH_VARIANTS=x86_64;arm64" >> "$OUTPUT_CONAN_PROFILE"
 
         echo "" >> "$OUTPUT_CONAN_PROFILE"
-        CMAKE_VERSION=$(cmake --version 2>/dev/null | head -n1 | awk '{print $3}')
-        if [ -n "$CMAKE_VERSION" ]; then
-            echo "[platform_tool_requires]" >> "$OUTPUT_CONAN_PROFILE"
-            echo "cmake/${CMAKE_VERSION}" >> "$OUTPUT_CONAN_PROFILE"
-        fi
+        echo "[platform_tool_requires]" >> "$OUTPUT_CONAN_PROFILE"
+        
     fi
     cat "$OUTPUT_CONAN_PROFILE"
 
