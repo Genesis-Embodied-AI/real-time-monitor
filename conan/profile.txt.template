@@ -11,9 +11,6 @@ build_type=Release
 
 [tool_requires]
 
-[conf]
-tools.system.package_manager:mode=report
-
 [buildenv]
 CC=@BINARY_PATH_CC@
 CXX=@BINARY_PATH_CXX@
