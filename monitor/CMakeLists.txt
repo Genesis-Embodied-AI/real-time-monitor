@@ -1,24 +1,6 @@
 find_package(imgui REQUIRED)
 find_package(argparse REQUIRED)
-
-# Build GLFW for source
-# ---- GLFW options (must be set BEFORE FetchContent_MakeAvailable) ----
-set(GLFW_BUILD_NULL       ON  CACHE BOOL "" FORCE)
-set(GLFW_BUILD_X11        ON  CACHE BOOL "" FORCE)
-set(GLFW_BUILD_WAYLAND    ON  CACHE BOOL "" FORCE)
-set(GLFW_BUILD_EXAMPLES   OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_TESTS      OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_DOCS       OFF CACHE BOOL "" FORCE)
-set(GLFW_INSTALL          OFF CACHE BOOL "" FORCE)
-set(GLFW_LIBRARY_TYPE     "STATIC"  CACHE STRING "" FORCE)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON CACHE BOOL "" FORCE)
-
-include(FetchContent)
-FetchContent_Declare(glfw
-GIT_REPOSITORY    https://github.com/glfw/glfw.git
-GIT_TAG           3.4
-)
-FetchContent_MakeAvailable(glfw)
+find_package(glfw3 REQUIRED)
 
 if (LINUX)
     set(OS_LIB_SOURCES
@@ -68,7 +50,7 @@ set(MONITOR_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/serie.cc
     )
 add_executable(rtm_gui ${MONITOR_SRCS})
-target_link_libraries(rtm_gui PRIVATE implot rtm argparse::argparse)
+target_link_libraries(rtm_gui PRIVATE implot rtm argparse::argparse glfw)
 
 if (SKBUILD)
     install(TARGETS rtm_gui DESTINATION ${SKBUILD_SCRIPTS_DIR})

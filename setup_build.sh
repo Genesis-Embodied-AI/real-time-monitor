@@ -226,6 +226,12 @@ else
     CONAN_PROFILE_ARGS="-pr $OUTPUT_CONAN_PROFILE -pr:b $OUTPUT_CONAN_PROFILE"
 fi
 
+# In root environments (e.g. manylinux CI containers), sudo does not exist
+if [[ "$(id -u)" == "0" ]]; then
+    sed -i 's/tools.system.package_manager:sudo=True/tools.system.package_manager:sudo=False/' "$OUTPUT_CONAN_PROFILE"
+    [[ -f "$build_dir/profile_build.txt" ]] && sed -i 's/tools.system.package_manager:sudo=True/tools.system.package_manager:sudo=False/' "$build_dir/profile_build.txt"
+fi
+
 # Prepare debug dependencies only for local call, not in CI
 if [[ "${CIBUILDWHEEL:-}" != "1" ]]; then
     conan install "$SOURCE_DIR/conan/conanfile.txt" -of="$build_dir" $CONAN_PROFILE_ARGS --build=missing -s build_type=Debug
