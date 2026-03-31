@@ -219,7 +219,7 @@ else
 
         echo "" >> "$OUTPUT_CONAN_PROFILE"
         echo "[platform_tool_requires]" >> "$OUTPUT_CONAN_PROFILE"
-        echo "cmake/[>=4.1.1]" >> "$OUTPUT_CONAN_PROFILE"
+        
     fi
     cat "$OUTPUT_CONAN_PROFILE"
 
