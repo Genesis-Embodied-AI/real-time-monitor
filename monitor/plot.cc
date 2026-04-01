@@ -1,10 +1,13 @@
 #include <algorithm>
+#include <limits>
 #include <implot.h>
+#include <implot_internal.h>
 
 #include "plot.h"
 
 namespace rtm
 {
+    constexpr double Y_AXIS_MARGIN = 0.05;
     int format_duration(char* buff, int size, seconds_f duration, int precision = 3)
     {
         double seconds = duration.count();
@@ -62,9 +65,11 @@ namespace rtm
     }
 
 
-    void Plot::add_serie(Serie&& s, milliseconds_f max_y, nanoseconds begin, nanoseconds end)
+    void Plot::add_serie(Serie&& s, milliseconds_f min_y, milliseconds_f max_y, nanoseconds begin, nanoseconds end)
     {
         series_.emplace_back(std::move(s));
+        serie_bounds_.push_back({seconds_f(begin), seconds_f(end), min_y, max_y});
+        min_y_ = std::min(min_y_, min_y);
         max_y_ = std::max(max_y_, max_y);
         if (begin_ < 0ns)
         {
@@ -195,16 +200,39 @@ namespace rtm
         if (ImGui::BeginTabItem(name_.c_str()))
         {
             // Force a start with the full view
-            ImPlot::SetNextAxesLimits(seconds_f(begin_).count(), seconds_f(end_).count(),
-                                      0, max_y_.count(),
-                                      ImPlotCond_Once);
+            {
+                double y_range = max_y_.count() - min_y_.count();
+                ImPlot::SetNextAxesLimits(seconds_f(begin_).count(), seconds_f(end_).count(),
+                                          min_y_.count() - y_range * Y_AXIS_MARGIN,
+                                          max_y_.count() + y_range * Y_AXIS_MARGIN,
+                                          ImPlotCond_Once);
+            }
 
             if (ImGui::IsKeyPressed(ImGuiKey_Escape))
             {
-                // Full view on escape
-                ImPlot::SetNextAxesLimits(seconds_f(begin_).count(), seconds_f(end_).count(),
-                                          0, max_y_.count(),
-                                          ImPlotCond_Always);
+                double x_min = std::numeric_limits<double>::max();
+                double x_max = std::numeric_limits<double>::lowest();
+                double y_min = std::numeric_limits<double>::max();
+                double y_max = std::numeric_limits<double>::lowest();
+
+                for (std::size_t i = 0; i < series_.size(); ++i)
+                {
+                    if (serie_bounds_[i].visible)
+                    {
+                        x_min = std::min(x_min, serie_bounds_[i].begin.count());
+                        x_max = std::max(x_max, serie_bounds_[i].end.count());
+                        y_min = std::min(y_min, serie_bounds_[i].min_y.count());
+                        y_max = std::max(y_max, serie_bounds_[i].max_y.count());
+                    }
+                }
+
+                if (y_max > y_min)
+                {
+                    double y_range = y_max - y_min;
+                    y_min -= y_range * Y_AXIS_MARGIN;
+                    y_max += y_range * Y_AXIS_MARGIN;
+                    ImPlot::SetNextAxesLimits(x_min, x_max, y_min, y_max, ImPlotCond_Always);
+                }
             }
 
             // Plot area
@@ -224,9 +252,11 @@ namespace rtm
                 ImPlot::SetupAxisFormat(ImAxis_Y1, time_formatter, &y_to_seconds);
 
                 compute_stats_on_view_update();
-                for (auto const& serie : series_)
+                for (std::size_t i = 0; i < series_.size(); ++i)
                 {
-                    is_downsampled_ |= serie.plot();
+                    is_downsampled_ |= series_[i].plot();
+                    ImPlotItem* item = ImPlot::GetItem(series_[i].name().c_str());
+                    serie_bounds_[i].visible = (item == nullptr or item->Show);
                 }
 
                 // Snap Tooltip
@@ -239,16 +269,19 @@ namespace rtm
                     const Point* closest_point = nullptr;
                     double best_dx = std::numeric_limits<double>::max();
 
-                    for (auto const& serie : series_) 
+                    for (std::size_t i = 0; i < series_.size(); ++i) 
                     {
-                        Point const* pt = serie.find_nearest(mouse.x, limits);
+                        if (not serie_bounds_[i].visible)
+                            continue;
+
+                        Point const* pt = series_[i].find_nearest(mouse.x, limits);
                         if (pt)
                         {
                             double dx = std::abs(pt->x - mouse.x);
                             if (dx < best_dx)
                             {
                                 best_dx = dx;
-                                closest_serie = &serie;
+                                closest_serie = &series_[i];
                                 closest_point = pt;
                             }
                         }

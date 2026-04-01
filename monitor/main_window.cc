@@ -47,13 +47,13 @@ namespace rtm
             {
                 // diff times
                 Serie s{name, p.generate_times_diff(), color};
-                diff_.add_serie(std::move(s), p.diff_max(), p.begin(), p.end());
+                diff_.add_serie(std::move(s), p.diff_min(), p.diff_max(), p.begin(), p.end());
             }
 
             {
                 // up times
                 Serie s{name, p.generate_times_up(), color};
-                up_.add_serie(std::move(s), p.up_max(), p.begin(), p.end());
+                up_.add_serie(std::move(s), p.up_min(), p.up_max(), p.begin(), p.end());
             }
         }
     }

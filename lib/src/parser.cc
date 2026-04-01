@@ -171,6 +171,7 @@ namespace rtm
         {
             seconds_f x = samples_[i];
             milliseconds_f y = samples_[i] - samples_[i - 2];
+            diff_min_ = std::min(diff_min_, y);
             diff_max_ = std::max(diff_max_, y);
             serie.push_back({x.count(), y.count()});
         }
@@ -187,6 +188,7 @@ namespace rtm
         {
             seconds_f x = samples_[i - 1];
             milliseconds_f y = samples_[i] - samples_[i - 1];
+            up_min_ = std::min(up_min_, y);
             up_max_ = std::max(up_max_, y);
             serie.push_back({x.count(), y.count()});
         }
@@ -204,9 +206,19 @@ namespace rtm
         return end_;
     }
 
+    milliseconds_f Parser::diff_min() const
+    {
+        return diff_min_;
+    }
+
     milliseconds_f Parser::diff_max() const
     {
         return diff_max_;
+    }
+
+    milliseconds_f Parser::up_min() const
+    {
+        return up_min_;
     }
 
     milliseconds_f Parser::up_max() const
