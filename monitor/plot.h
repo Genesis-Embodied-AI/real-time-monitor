@@ -14,7 +14,7 @@ namespace rtm
     {
     public:
         Plot(std::string const& name, std::string const& legend);
-        void add_serie(Serie&& serie, milliseconds_f max_y, nanoseconds begin, nanoseconds end);
+        void add_serie(Serie&& serie, milliseconds_f min_y, milliseconds_f max_y, nanoseconds begin, nanoseconds end);
         void draw();
 
     private:
@@ -26,10 +26,21 @@ namespace rtm
         std::string name_;
         std::string legend_;
 
+        struct SerieBounds
+        {
+            seconds_f begin;
+            seconds_f end;
+            milliseconds_f min_y;
+            milliseconds_f max_y;
+            bool visible{true};
+        };
+
         std::vector<Serie> series_;
+        std::vector<SerieBounds> serie_bounds_;
         std::vector<Statistics> stats_;
         std::future<std::vector<Statistics>> stats_future_;
         ImPlotRect old_limits_;
+        milliseconds_f min_y_{nanoseconds::max()};
         milliseconds_f max_y_{-1ns};
         bool is_downsampled_{false};
 
