@@ -44,6 +44,10 @@ int main(int argc, char* argv[])
     parser.add_argument("inputs")
         .help("files (.tick), folders, or glob patterns — defaults to current directory")
         .nargs(argparse::nargs_pattern::any);
+    parser.add_argument("--latest")
+        .help("open the most recently modified subdirectory in the given folder (default: current directory)")
+        .nargs(argparse::nargs_pattern::optional)
+        .default_value(std::string{});
 
     try
     {
@@ -55,23 +59,69 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    auto raw_inputs = parser.get<std::vector<std::string>>("inputs");
     std::vector<std::filesystem::path> inputs;
-    if (raw_inputs.empty())
+
+    if (parser.is_used("--latest"))
     {
-        inputs.push_back(".");
+        auto latest_arg = parser.get<std::string>("--latest");
+        std::filesystem::path search_dir = latest_arg.empty() ? "." : latest_arg;
+
+        if (not std::filesystem::is_directory(search_dir))
+        {
+            fprintf(stderr, "Error: '--latest' argument '%s' is not a directory\n", search_dir.c_str());
+            return 1;
+        }
+
+        std::filesystem::path latest_dir;
+        std::filesystem::file_time_type latest_time;
+        bool found = false;
+
+        for (auto const& entry : std::filesystem::directory_iterator(search_dir))
+        {
+            if (not entry.is_directory())
+            {
+                continue;
+            }
+
+            auto mtime = entry.last_write_time();
+            if (not found or mtime > latest_time)
+            {
+                latest_time = mtime;
+                latest_dir = entry.path();
+                found = true;
+            }
+        }
+
+        if (not found)
+        {
+            fprintf(stderr, "Error: no subdirectories found in '%s'\n", search_dir.c_str());
+            return 1;
+        }
+
+        printf("--latest: loading '%s'\n", latest_dir.c_str());
+        inputs.push_back(latest_dir);
     }
     else
     {
-        for (auto const& arg : raw_inputs)
+        auto raw_inputs = parser.get<std::vector<std::string>>("inputs");
+        if (raw_inputs.empty())
         {
-            glob_t g{};
-            if (glob(arg.c_str(), GLOB_TILDE | GLOB_NOCHECK, nullptr, &g) == 0)
+            inputs.push_back(".");
+        }
+        else
+        {
+            for (auto const& arg : raw_inputs)
             {
-                for (size_t j = 0; j < g.gl_pathc; ++j)
-                    inputs.emplace_back(g.gl_pathv[j]);
+                glob_t g{};
+                if (glob(arg.c_str(), GLOB_TILDE | GLOB_NOCHECK, nullptr, &g) == 0)
+                {
+                    for (size_t j = 0; j < g.gl_pathc; ++j)
+                    {
+                        inputs.emplace_back(g.gl_pathv[j]);
+                    }
+                }
+                globfree(&g);
             }
-            globfree(&g);
         }
     }
 
