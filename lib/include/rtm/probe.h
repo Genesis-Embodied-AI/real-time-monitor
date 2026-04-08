@@ -12,6 +12,23 @@
 
 namespace rtm
 {
+    class Probe;
+
+    class ProbeGuard
+    {
+    public:
+        ProbeGuard(Probe& probe);
+        ~ProbeGuard();
+
+        ProbeGuard(ProbeGuard const&) = delete;
+        ProbeGuard(ProbeGuard&&) = delete;
+        ProbeGuard& operator=(ProbeGuard const&) = delete;
+        ProbeGuard& operator=(ProbeGuard&&) = delete;
+
+    private:
+        Probe* probe_;
+    };
+
     class Probe
     {
     public:

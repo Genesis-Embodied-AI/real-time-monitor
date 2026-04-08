@@ -8,6 +8,17 @@
 
 namespace rtm
 {
+    ProbeGuard::ProbeGuard(Probe& probe)
+        : probe_(&probe)
+    {
+        probe_->log();
+    }
+
+    ProbeGuard::~ProbeGuard()
+    {
+        probe_->log();
+    }
+
     Probe::Probe()
     {
         samples_.reserve(MAX_SAMPLES);

@@ -19,16 +19,15 @@ else:
 TARGET = 0.001  # 1 ms
 
 for i in range(400000):
-    p.log_start()
-    start = time.perf_counter()
+    with p:
+        start = time.perf_counter()
 
-    # ---- dummy computation ----
-    x = i * i
+        # ---- dummy computation ----
+        x = i * i
 
-    # ---- adjust to hit 1 ms ----
-    elapsed = time.perf_counter() - start
-    remaining = TARGET - elapsed
-    p.log_end()
+        # ---- adjust to hit 1 ms ----
+        elapsed = time.perf_counter() - start
+        remaining = TARGET - elapsed
 
     if remaining > 0:
         time.sleep(remaining)
