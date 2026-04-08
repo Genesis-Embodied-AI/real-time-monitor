@@ -89,7 +89,9 @@ namespace rtm
             .def("set_threshold", [](Probe& self, uint64_t threshold_ns)
                 {
                     self.set_threshold(nanoseconds{threshold_ns});
-                }, "threshold_ns"_a);
+                }, "threshold_ns"_a)
+            .def("__enter__", [](Probe& self) -> Probe& { self.log(); return self; })
+            .def("__exit__", [](Probe& self, nb::handle, nb::handle, nb::handle) { self.log(); });
 
         nb::bind_vector<std::vector<float>>(m, "FVector");
         nb::bind_vector<std::vector<nanoseconds>>(m, "nsVector");
