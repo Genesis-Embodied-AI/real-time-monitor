@@ -10,6 +10,9 @@ namespace rtm
 {
     using std::chrono::nanoseconds;
 
+    constexpr uint16_t PROTOCOL_MAJOR = 2;
+    constexpr uint16_t PROTOCOL_MINOR = 0;
+
     constexpr uint32_t ESCAPE = (1u << 31);
     enum Command
     {
@@ -17,6 +20,7 @@ namespace rtm
         UPDATE_PRIORITY  = (1 << 1),
         UPDATE_REFERENCE = (1 << 2),
         SET_THRESHOLD    = (1 << 3),
+        DATA_STREAM_END  = (1 << 4),
     };
 
     template<typename T>
