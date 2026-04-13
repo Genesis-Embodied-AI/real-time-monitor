@@ -65,10 +65,10 @@ namespace rtm
     }
 
 
-    void Plot::add_serie(Serie&& s, milliseconds_f min_y, milliseconds_f max_y, nanoseconds begin, nanoseconds end)
+    void Plot::add_serie(std::shared_ptr<Serie> s, milliseconds_f min_y, milliseconds_f max_y, nanoseconds begin, nanoseconds end, bool visible)
     {
-        series_.emplace_back(std::move(s));
-        serie_bounds_.push_back({seconds_f(begin), seconds_f(end), min_y, max_y});
+        series_.push_back(std::move(s));
+        serie_bounds_.push_back({seconds_f(begin), seconds_f(end), min_y, max_y, visible});
         min_y_ = std::min(min_y_, min_y);
         max_y_ = std::max(max_y_, max_y);
         if (begin_ < 0ns)
@@ -82,6 +82,27 @@ namespace rtm
         end_   = std::max(end_, end);
     }
 
+    void Plot::sort_series()
+    {
+        std::vector<std::pair<std::shared_ptr<Serie>, SerieBounds>> zipped;
+        zipped.reserve(series_.size());
+        for (std::size_t i = 0; i < series_.size(); ++i)
+        {
+            zipped.emplace_back(std::move(series_[i]), serie_bounds_[i]);
+        }
+
+        std::stable_sort(zipped.begin(), zipped.end(),
+            [](auto const& a, auto const& b)
+            {
+                return a.first->display_weight() < b.first->display_weight();
+            });
+
+        for (std::size_t i = 0; i < zipped.size(); ++i)
+        {
+            series_[i]       = std::move(zipped[i].first);
+            serie_bounds_[i] = zipped[i].second;
+        }
+    }
 
     void Plot::draw_stats_panel()
     {
@@ -109,7 +130,7 @@ namespace rtm
             for (std::size_t i = 0; i < series_.size() and i < stats_.size(); ++i)
             {
                 Statistics const& stats = stats_[i];
-                Serie const& serie = series_[i];
+                Serie const& serie = *series_[i];
 
                 // Create unique ID by combining name with index
                 std::string unique_id = serie.name() + "##" + std::to_string(i);
@@ -254,8 +275,9 @@ namespace rtm
                 compute_stats_on_view_update();
                 for (std::size_t i = 0; i < series_.size(); ++i)
                 {
-                    is_downsampled_ |= series_[i].plot();
-                    ImPlotItem* item = ImPlot::GetItem(series_[i].name().c_str());
+                    ImPlot::HideNextItem(!serie_bounds_[i].visible, ImPlotCond_Once);
+                    is_downsampled_ |= series_[i]->plot();
+                    ImPlotItem* item = ImPlot::GetItem(series_[i]->plot_id().c_str());
                     serie_bounds_[i].visible = (item == nullptr or item->Show);
                 }
 
@@ -274,14 +296,14 @@ namespace rtm
                         if (not serie_bounds_[i].visible)
                             continue;
 
-                        Point const* pt = series_[i].find_nearest(mouse.x, limits);
+                        Point const* pt = series_[i]->find_nearest(mouse.x, limits);
                         if (pt)
                         {
                             double dx = std::abs(pt->x - mouse.x);
                             if (dx < best_dx)
                             {
                                 best_dx = dx;
-                                closest_serie = &series_[i];
+                                closest_serie = series_[i].get();
                                 closest_point = pt;
                             }
                         }
@@ -373,7 +395,7 @@ namespace rtm
                     result.reserve(series_.size());
                     for (auto const& serie : series_)
                     {
-                        result.push_back(serie.compute_statistics(x_min, x_max));
+                        result.push_back(serie->compute_statistics(x_min, x_max));
                     }
                     return result;
                 });

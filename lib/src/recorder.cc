@@ -4,6 +4,7 @@
 
 #include "recorder.h"
 #include "commands.h"
+#include "parser.h"
 #include "serializer.h"
 #include "io/file.h"
 #include "io/null.h"
@@ -99,36 +100,11 @@ namespace rtm
         // Rebuild header with a unique task name so the GUI can distinguish files
         std::string unique_task = client.source_name + "@" + std::to_string(trigger_s) + "s";
         {
-            constexpr uint16_t PROTOCOL_VERSION = 1;
-            constexpr uint8_t PADDING[6] = {0};
+            std::array<uint8_t, 16> uuid;
+            std::memcpy(uuid.data(), client.header_bytes.data() + 16, uuid.size());
 
-            std::vector<uint8_t> header;
-            append(header, PROTOCOL_VERSION);
-            append(header, PADDING);
-            int64_t data_offset = 0;
-            append(header, data_offset);
-            header.insert(header.end(), client.header_bytes.begin() + 16, client.header_bytes.begin() + 32);
-
-            append(header, client.start_time);
-
-            uint16_t process_size = static_cast<uint16_t>(client.process_name.size());
-            append(header, process_size);
-            append(header, std::string_view{client.process_name});
-
-            uint16_t task_size = static_cast<uint16_t>(unique_task.size());
-            append(header, task_size);
-            append(header, std::string_view{unique_task});
-
-            data_offset = static_cast<int64_t>(header.size());
-            if (data_offset % 8)
-            {
-                data_offset += (8 - data_offset % 8);
-            }
-            header.resize(static_cast<std::size_t>(data_offset));
-            std::memcpy(header.data() + 8, &data_offset, sizeof(data_offset));
-
-            append(header, PROTOCOL_VERSION);
-            append(header, PADDING);
+            std::vector<uint8_t> header = build_tick_header(
+                uuid, client.start_time, client.process_name, unique_task);
 
             client.sink->write(header.data(), static_cast<int64_t>(header.size()));
         }
@@ -183,6 +159,8 @@ namespace rtm
 
         if (client.sink != nullptr)
         {
+            uint32_t sentinel = ESCAPE | Command::DATA_STREAM_END;
+            client.sink->write(&sentinel, sizeof(sentinel));
             client.sink->sync();
             client.sink.reset();
         }
@@ -190,8 +168,9 @@ namespace rtm
         client.mode = Mode::BUFFERING;
     }
 
-    void Recorder::parse_blackbox_data(Client& client)
+    bool Recorder::parse_blackbox_data(Client& client)
     {
+        bool end_of_stream = false;
         uint8_t const* pos = client.buffer.data();
         uint8_t const* const buf_end = pos + client.buffer.size();
 
@@ -289,6 +268,15 @@ namespace rtm
 
             if (raw & ESCAPE)
             {
+                if (raw == (ESCAPE | Command::DATA_STREAM_END))
+                {
+                    // Sentinel = clean disconnection. Any bytes remaining in
+                    // client.buffer after this are post-disconnect garbage and
+                    // are intentionally dropped by the caller (io is reset).
+                    end_of_stream = true;
+                    break;
+                }
+
                 if (raw & Command::SET_THRESHOLD)
                 {
                     if (pos + sizeof(uint64_t) > buf_end)
@@ -371,6 +359,8 @@ namespace rtm
         {
             client.sink->sync();
         }
+
+        return end_of_stream;
     }
 
     void Recorder::process()
@@ -403,6 +393,12 @@ namespace rtm
                 else if (client.mode == Mode::NORMAL)
                 {
                     client.flush();
+                    if (client.sink != nullptr)
+                    {
+                        uint32_t sentinel = ESCAPE | Command::DATA_STREAM_END;
+                        client.sink->write(&sentinel, sizeof(sentinel));
+                        client.sink->sync();
+                    }
                 }
 
                 client.io.reset();
@@ -578,7 +574,14 @@ namespace rtm
             }
             else if (client.mode == Mode::BUFFERING or client.mode == Mode::RECORDING)
             {
-                parse_blackbox_data(client);
+                if (parse_blackbox_data(client))
+                {
+                    if (client.mode == Mode::RECORDING)
+                    {
+                        stop_recording(client);
+                    }
+                    client.io.reset();
+                }
             }
         }
 

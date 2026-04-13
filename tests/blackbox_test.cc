@@ -362,7 +362,7 @@ bool test_blackbox_file_header()
     Parser parser(std::move(io));
     parser.load_header();
 
-    CHECK(parser.header().version == 1, "wrong protocol version");
+    CHECK(parser.header().major == 2, "wrong protocol major version");
     CHECK(parser.header().process == "test_process", "wrong process name");
     CHECK(parser.header().name.find("test_task@") == 0, "wrong task name (expected test_task@...)");
     CHECK(parser.header().start_time == START, "wrong start_time");

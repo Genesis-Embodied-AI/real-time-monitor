@@ -3,6 +3,7 @@
 #include <cstdio>
 
 #include "commands.h"
+#include "parser.h"
 #include "probe.h"
 #include "serializer.h"
 
@@ -29,6 +30,8 @@ namespace rtm
         if (io_ != nullptr)
         {
             flush();
+            uint32_t sentinel = ESCAPE | Command::DATA_STREAM_END;
+            io_->write(&sentinel, sizeof(sentinel));
         }
     }
 
@@ -36,51 +39,12 @@ namespace rtm
                          nanoseconds process_start_time, nanoseconds task_period, int32_t task_priority,
                          std::unique_ptr<AbstractIO> io)
     {
-        constexpr uint16_t PROTOCOL_VERSION = 1;
-        constexpr uint8_t PADDING[6] = {0};
-
         io_ = std::move(io);
 
-        std::vector<uint8_t> header_buffer;
-
-        append(header_buffer, PROTOCOL_VERSION);
-        append(header_buffer, PADDING);
-
-        // data offset dummy write - waiting for computation
-        int64_t data_offset = 0;
-        append(header_buffer, data_offset);
-
-        // write session UUID
         std::array<uint8_t, 16> uuid = {0}; // TODO
-        append(header_buffer, uuid);
+        std::vector<uint8_t> header_buffer = build_tick_header(
+            uuid, process_start_time, process, task_name);
 
-        // write processus startup time since epoch in ns
-        append(header_buffer, process_start_time);
-
-        uint16_t process_size = static_cast<uint16_t>(process.size());
-        append(header_buffer, process_size);
-        append(header_buffer, process);
-
-        uint16_t task_name_size = static_cast<uint16_t>(task_name.size());
-        append(header_buffer, task_name_size);
-        append(header_buffer, task_name);
-
-        // Align the data section on 8 bytes boundaries
-        data_offset = header_buffer.size();
-        if (data_offset % 8)
-        {
-            data_offset += (8 - data_offset % 8);
-        }
-        header_buffer.resize(data_offset);
-
-        // write back data offset
-        std::memcpy(header_buffer.data() + 8, &data_offset, sizeof(data_offset));
-
-        // write data section header
-        append(header_buffer, PROTOCOL_VERSION);
-        append(header_buffer, PADDING);
-
-        // Write header
         io_->write(header_buffer.data(), header_buffer.size());
 
         // Initial update of period/prio/ref

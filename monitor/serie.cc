@@ -83,6 +83,23 @@ namespace rtm
         color_  = color;
     }
 
+    std::string const& Serie::name() const
+    {
+        if (display_name_.empty())
+        {
+            return name_;
+        }
+        return display_name_;
+    }
+
+    std::string Serie::plot_id() const
+    {
+        std::string label = name();
+        label += "###";
+        label += name_;
+        return label;
+    }
+
     void Serie::plot_visible(ImPlotRect const& limits, Point const* data, int count) const
     {
         auto begin = data;
@@ -101,7 +118,7 @@ namespace rtm
         int vis_count = static_cast<int>(vis_end - vis_begin);
         if (vis_count > 0)
         {
-            ImPlot::PlotLine(name_.c_str(), &vis_begin->x, &vis_begin->y,
+            ImPlot::PlotLine(plot_id().c_str(), &vis_begin->x, &vis_begin->y,
                 vis_count, 0, 0, sizeof(Point));
         }
     }

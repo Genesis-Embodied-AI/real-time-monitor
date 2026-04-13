@@ -27,6 +27,11 @@ namespace rtm
         return from_errno(ENOSYS);
     }
 
+    std::error_code AbstractIO::truncate(int64_t)
+    {
+        return from_errno(ENOSYS);
+    }
+
     std::error_code AbstractIO::sync()
     {
         return from_errno(ENOSYS);

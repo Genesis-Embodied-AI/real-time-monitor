@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <functional>
 #include <future>
+#include <memory>
 #include <implot.h>
 
 #include "serie.h"
@@ -14,7 +15,9 @@ namespace rtm
     {
     public:
         Plot(std::string const& name, std::string const& legend);
-        void add_serie(Serie&& serie, milliseconds_f min_y, milliseconds_f max_y, nanoseconds begin, nanoseconds end);
+        void add_serie(std::shared_ptr<Serie> serie, milliseconds_f min_y, milliseconds_f max_y, nanoseconds begin, nanoseconds end, bool visible = true);
+        void sort_series();
+
         void draw();
 
     private:
@@ -35,7 +38,7 @@ namespace rtm
             bool visible{true};
         };
 
-        std::vector<Serie> series_;
+        std::vector<std::shared_ptr<Serie>> series_;
         std::vector<SerieBounds> serie_bounds_;
         std::vector<Statistics> stats_;
         std::future<std::vector<Statistics>> stats_future_;

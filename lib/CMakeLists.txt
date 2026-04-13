@@ -9,7 +9,10 @@ set(LIB_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/io/posix/tcp_socket.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/io/posix/udp_socket.cc
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/parser.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/metadata.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/parser_header.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/parser_data.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/parser_metadata.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/probe.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/recorder.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/serializer.cc

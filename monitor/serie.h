@@ -31,7 +31,19 @@ namespace rtm
         bool plot() const;
         Point const* find_nearest(double x, ImPlotRect const& limits) const;
 
-        std::string const& name() const { return name_; }
+        std::string const& name() const;
+        std::string const& original_name() const { return name_; }
+
+        // Label passed to ImPlot: "<display>###<original>" so the identity is
+        // stable across renames (ImGui/ImPlot "###" convention).
+        std::string plot_id() const;
+
+        std::string const& display_name() const { return display_name_; }
+        void set_display_name(std::string const& n) { display_name_ = n; }
+
+        int32_t display_weight() const { return display_weight_; }
+        void set_display_weight(int32_t w) { display_weight_ = w; }
+
         Statistics compute_statistics(double begin, double end) const;
         ImVec4 const& color() const { return color_; }
 
@@ -49,6 +61,8 @@ namespace rtm
         ImVec4 color_;
 
         std::string name_;
+        std::string display_name_;
+        int32_t display_weight_{0};
 
         std::vector<Section> sections_;
         std::vector<Point> serie_;
