@@ -26,6 +26,11 @@ namespace rtm
 
         void compute_stats_on_view_update();
 
+        // Aggregate x/y bounds over currently-visible series, padded on Y by
+        // Y_AXIS_MARGIN. Returns false if no series is visible (limits untouched).
+        bool compute_visible_limits(double& x_min, double& x_max,
+                                    double& y_min, double& y_max) const;
+
         std::string name_;
         std::string legend_;
 
@@ -43,12 +48,7 @@ namespace rtm
         std::vector<Statistics> stats_;
         std::future<std::vector<Statistics>> stats_future_;
         ImPlotRect old_limits_;
-        milliseconds_f min_y_{nanoseconds::max()};
-        milliseconds_f max_y_{-1ns};
         bool is_downsampled_{false};
-
-        nanoseconds begin_{-1ns};
-        nanoseconds end_{-1ns};           // end (X) of the plots
 
         bool show_stats_{false};
         float stats_bar_width{250.0f};

@@ -69,17 +69,51 @@ namespace rtm
     {
         series_.push_back(std::move(s));
         serie_bounds_.push_back({seconds_f(begin), seconds_f(end), min_y, max_y, visible});
-        min_y_ = std::min(min_y_, min_y);
-        max_y_ = std::max(max_y_, max_y);
-        if (begin_ < 0ns)
+    }
+
+    bool Plot::compute_visible_limits(double& x_min, double& x_max,
+                                      double& y_min, double& y_max) const
+    {
+        x_min = std::numeric_limits<double>::max();
+        x_max = std::numeric_limits<double>::lowest();
+        y_min = std::numeric_limits<double>::max();
+        y_max = std::numeric_limits<double>::lowest();
+
+        bool any_visible = false;
+        for (auto const& b : serie_bounds_)
         {
-            begin_ = begin;
+            if (not b.visible)
+            {
+                continue;
+            }
+            any_visible = true;
+            x_min = std::min(x_min, b.begin.count());
+            x_max = std::max(x_max, b.end.count());
+            y_min = std::min(y_min, b.min_y.count());
+            y_max = std::max(y_max, b.max_y.count());
+        }
+
+        if (not any_visible)
+        {
+            return false;
+        }
+
+        if (y_max <= y_min)
+        {
+            // Flat-line series (all samples share the same y): expand with a
+            // small absolute margin so the curve is still visible on first
+            // render instead of sitting on a zero-height axis range.
+            constexpr double FLAT_LINE_Y_PAD = 1.0; // milliseconds
+            y_min -= FLAT_LINE_Y_PAD;
+            y_max += FLAT_LINE_Y_PAD;
         }
         else
         {
-            begin_ = std::min(begin_, begin);
+            double y_range = y_max - y_min;
+            y_min -= y_range * Y_AXIS_MARGIN;
+            y_max += y_range * Y_AXIS_MARGIN;
         }
-        end_   = std::max(end_, end);
+        return true;
     }
 
     void Plot::sort_series()
@@ -220,40 +254,18 @@ namespace rtm
     {
         if (ImGui::BeginTabItem(name_.c_str()))
         {
-            // Force a start with the full view
+            double x_min, x_max, y_min, y_max;
+            bool has_visible_limits = compute_visible_limits(x_min, x_max, y_min, y_max);
+
+            // Force a start with the full view (fit to visible series only).
+            if (has_visible_limits)
             {
-                double y_range = max_y_.count() - min_y_.count();
-                ImPlot::SetNextAxesLimits(seconds_f(begin_).count(), seconds_f(end_).count(),
-                                          min_y_.count() - y_range * Y_AXIS_MARGIN,
-                                          max_y_.count() + y_range * Y_AXIS_MARGIN,
-                                          ImPlotCond_Once);
+                ImPlot::SetNextAxesLimits(x_min, x_max, y_min, y_max, ImPlotCond_Once);
             }
 
-            if (ImGui::IsKeyPressed(ImGuiKey_Escape))
+            if (has_visible_limits and ImGui::IsKeyPressed(ImGuiKey_Escape))
             {
-                double x_min = std::numeric_limits<double>::max();
-                double x_max = std::numeric_limits<double>::lowest();
-                double y_min = std::numeric_limits<double>::max();
-                double y_max = std::numeric_limits<double>::lowest();
-
-                for (std::size_t i = 0; i < series_.size(); ++i)
-                {
-                    if (serie_bounds_[i].visible)
-                    {
-                        x_min = std::min(x_min, serie_bounds_[i].begin.count());
-                        x_max = std::max(x_max, serie_bounds_[i].end.count());
-                        y_min = std::min(y_min, serie_bounds_[i].min_y.count());
-                        y_max = std::max(y_max, serie_bounds_[i].max_y.count());
-                    }
-                }
-
-                if (y_max > y_min)
-                {
-                    double y_range = y_max - y_min;
-                    y_min -= y_range * Y_AXIS_MARGIN;
-                    y_max += y_range * Y_AXIS_MARGIN;
-                    ImPlot::SetNextAxesLimits(x_min, x_max, y_min, y_max, ImPlotCond_Always);
-                }
+                ImPlot::SetNextAxesLimits(x_min, x_max, y_min, y_max, ImPlotCond_Always);
             }
 
             // Plot area

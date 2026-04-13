@@ -153,8 +153,12 @@ namespace rtm
                 return {};
             }
 
-            // Read data section until EOF.
-            src.seek(static_cast<int64_t>(old_data_offset));
+            // Read the data section events until EOF.
+            // The v1 data section begins with u16 data_version + 6B padding.
+            // build_tick_header() below will re-emit those 8 bytes, so skip
+            // them here to avoid duplicating them in the migrated file
+            // (which would be parsed as a spurious first timestamp delta).
+            src.seek(static_cast<int64_t>(old_data_offset) + 8);
             std::vector<uint8_t> data_section;
             uint8_t chunk[4096];
             while (true)
