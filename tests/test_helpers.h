@@ -112,7 +112,7 @@ inline bool verify_tick_file(fs::path const& dir)
 
     CHECK(parser.header().process == "test_process", "wrong process name");
     CHECK(parser.header().name == "test_task", "wrong task name");
-    CHECK(parser.header().version == 1, "wrong protocol version");
+    CHECK(parser.header().major == 2, "wrong protocol major version");
 
     bool loaded = parser.load_samples();
     CHECK(loaded, "failed to load samples");

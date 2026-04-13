@@ -83,7 +83,7 @@ namespace rtm
             nanoseconds recording_deadline{0};
         };
 
-        void parse_blackbox_data(Client& client);
+        bool parse_blackbox_data(Client& client);
         void trigger_recording(Client& client, nanoseconds trigger_absolute);
         void stop_recording(Client& client);
         void evict_ring(Client& client);

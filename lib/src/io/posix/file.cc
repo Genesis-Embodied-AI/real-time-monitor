@@ -100,6 +100,17 @@ namespace rtm
         return {};
     }
 
+    std::error_code File::truncate(int64_t size)
+    {
+        int rc = ::ftruncate(fd_, size);
+        if (rc < 0)
+        {
+            return from_errno(errno);
+        }
+
+        return {};
+    }
+
     std::error_code File::sync()
     {
         int rc = ::fsync(fd_);
