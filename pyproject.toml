@@ -68,7 +68,7 @@ before-all = [
 ]
 repair-wheel-command = [
   "auditwheel repair --zip-compression-level=9 --exclude libGLX.so.0 --exclude libOpenGL.so.0 --exclude libGLdispatch.so.0 -w {dest_dir} {wheel}",
-  "pipx run abi3audit --strict --report {wheel}",
+  "pipx run abi3audit --strict --report {dest_dir}/*.whl",
 ]
 
 [tool.cibuildwheel.macos]
@@ -83,5 +83,5 @@ before-all = [
 
 repair-wheel-command = [
   "delocate-wheel -w {dest_dir} {wheel}",
-  "pipx run abi3audit --strict --report {wheel}"
+  "pipx run abi3audit --strict --report {dest_dir}/*.whl"
 ]
