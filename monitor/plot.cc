@@ -163,6 +163,13 @@ namespace rtm
             // Display stats for each series
             for (std::size_t i = 0; i < series_.size() and i < stats_.size(); ++i)
             {
+                // Skip hidden curves — showing stats for series the user
+                // cannot see on the plot is just noise in the sidebar.
+                if (i < serie_bounds_.size() and not serie_bounds_[i].visible)
+                {
+                    continue;
+                }
+
                 Statistics const& stats = stats_[i];
                 Serie const& serie = *series_[i];
 

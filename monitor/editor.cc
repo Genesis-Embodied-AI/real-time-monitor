@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstring>
 #include <filesystem>
 
@@ -43,6 +44,34 @@ namespace rtm
         draw_repair_modal();
         draw_error_modal();
 
+        // Keyboard navigation of the curve list that works even while a text
+        // field (Display Name, bulk prefix) has focus. We route through
+        // ImGui::Shortcut() rather than raw IsKeyPressed so the key is
+        // "claimed" — otherwise ImGui's built-in nav system also consumes
+        // the arrow event in parallel and moves its nav focus ring.
+        if (not curves_.empty())
+        {
+            int new_idx = selected_idx_;
+            if (ImGui::Shortcut(ImGuiMod_Alt | ImGuiKey_DownArrow,
+                                ImGuiInputFlags_Repeat))
+            {
+                new_idx = (selected_idx_ < 0)
+                              ? 0
+                              : std::min(selected_idx_ + 1,
+                                         static_cast<int>(curves_.size()) - 1);
+            }
+            else if (ImGui::Shortcut(ImGuiMod_Alt | ImGuiKey_UpArrow,
+                                     ImGuiInputFlags_Repeat))
+            {
+                new_idx = (selected_idx_ <= 0) ? 0 : selected_idx_ - 1;
+            }
+            if (new_idx != selected_idx_)
+            {
+                selected_idx_ = new_idx;
+                scroll_to_selected_ = true;
+            }
+        }
+
         bool save_pressed = ImGui::Button("Save", ImVec2(120, 0));
         bool ctrl_s = ImGui::GetIO().KeyCtrl
                       and ImGui::IsKeyPressed(ImGuiKey_S, false);
@@ -51,8 +80,25 @@ namespace rtm
             save_all();
         }
         ImGui::SameLine();
-        ImGui::TextDisabled("%zu curve%s (Ctrl+S)",
+        ImGui::TextDisabled("%zu curve%s  |  Ctrl+S save  |  Alt+Up/Down navigate",
                             curves_.size(), curves_.size() == 1 ? "" : "s");
+
+        // Bulk helper: prepend a prefix to every curve's display name in one
+        // click. Useful for tagging a whole run (e.g. "run42_") at import time.
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextDisabled("Bulk:");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(180.0f);
+        ImGui::InputTextWithHint("##bulk_prefix", "prefix",
+                                 prefix_buf_, sizeof(prefix_buf_));
+        ImGui::SameLine();
+        bool can_apply = not curves_.empty() and prefix_buf_[0] != '\0';
+        ImGui::BeginDisabled(not can_apply);
+        if (ImGui::Button("Prefix all display names"))
+        {
+            apply_prefix_to_all(prefix_buf_);
+        }
+        ImGui::EndDisabled();
 
         ImGui::Separator();
 
@@ -92,7 +138,14 @@ namespace rtm
             {
                 selected_idx_ = static_cast<int>(i);
             }
+            // When the selection was moved by keyboard shortcut, keep the
+            // highlighted row visible by scrolling the child window.
+            if (is_selected and scroll_to_selected_)
+            {
+                ImGui::SetScrollHereY(0.5f);
+            }
         }
+        scroll_to_selected_ = false;
     }
 
     void Editor::draw_detail_panel()
@@ -105,8 +158,33 @@ namespace rtm
 
         auto& curve = curves_[static_cast<std::size_t>(selected_idx_)];
 
-        ImGui::Text("File: %s", std::filesystem::path(curve.path).filename().c_str());
-        ImGui::Text("Original name: %s", curve.diff->original_name().c_str());
+        // Render File and Original name as selectable-but-flat text: a
+        // read-only InputText with transparent frame background and zero
+        // padding looks like plain ImGui::Text but lets the user click-drag
+        // to select the value and copy it (Ctrl+C).
+        float name_width = ImGui::GetContentRegionAvail().x * 0.6f;
+        ImVec4 transparent(0.0f, 0.0f, 0.0f, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0.0f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBg,        transparent);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, transparent);
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive,  transparent);
+
+        ImGui::TextUnformatted("File:");
+        ImGui::SameLine();
+        std::string filename = std::filesystem::path(curve.path).filename().string();
+        ImGui::SetNextItemWidth(name_width);
+        ImGui::InputText("##file", filename.data(), filename.size() + 1,
+                         ImGuiInputTextFlags_ReadOnly);
+
+        ImGui::TextUnformatted("Original name:");
+        ImGui::SameLine();
+        std::string original = curve.diff->original_name();
+        ImGui::SetNextItemWidth(name_width);
+        ImGui::InputText("##original", original.data(), original.size() + 1,
+                         ImGuiInputTextFlags_ReadOnly);
+
+        ImGui::PopStyleColor(3);
+        ImGui::PopStyleVar();
         ImGui::Separator();
         ImGui::Spacing();
 
@@ -171,6 +249,34 @@ namespace rtm
             {
                 save_curve(curve);
             }
+        }
+    }
+
+    void Editor::apply_prefix_to_all(std::string const& prefix)
+    {
+        if (prefix.empty())
+        {
+            return;
+        }
+        for (auto& curve : curves_)
+        {
+            // Fall back to original_name when no display override exists, so
+            // the visible label after prefixing matches what the user saw
+            // before the click (rather than stranding an empty display name).
+            std::string current = curve.diff->display_name();
+            if (current.empty())
+            {
+                current = curve.diff->original_name();
+            }
+            if (current.rfind(prefix, 0) == 0)
+            {
+                // Already prefixed — skip so repeated clicks are idempotent.
+                continue;
+            }
+            std::string updated = prefix + current;
+            curve.diff->set_display_name(updated);
+            curve.up->set_display_name(updated);
+            curve.dirty = true;
         }
     }
 
