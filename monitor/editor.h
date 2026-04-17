@@ -43,12 +43,21 @@ namespace rtm
         // Returns true on success; on failure, appends the filename + reason
         // to save_errors_ so the user is notified via the error modal.
         bool save_curve(CurveInfo& curve);
+        // Prepends `prefix` to every curve's display_name. If a curve has no
+        // display_name override yet, the prefix is applied on top of its
+        // original_name so the resulting label matches what was shown.
+        // Idempotent: curves whose effective name already starts with the
+        // prefix are skipped.
+        void apply_prefix_to_all(std::string const& prefix);
 
         Plot& diff_plot_;
         Plot& up_plot_;
 
         std::vector<CurveInfo> curves_;
         int selected_idx_ = -1;
+        // Set when a keyboard shortcut changes selected_idx_ so the list can
+        // scroll the newly-selected row into view on the current frame.
+        bool scroll_to_selected_ = false;
 
         // Curves that require sentinel repair before metadata can be written,
         // collected during save_all() and resolved by the repair modal.
@@ -62,6 +71,9 @@ namespace rtm
         // Error messages accumulated during the most recent save pass, shown
         // to the user via draw_error_modal(). Cleared when the user dismisses.
         std::vector<std::string> save_errors_;
+
+        // Input buffer for the "prefix all display names" bulk helper.
+        char prefix_buf_[128] = {};
     };
 }
 
