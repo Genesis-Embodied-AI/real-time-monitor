@@ -26,7 +26,10 @@
 #include <filesystem>
 #include <vector>
 
+#include "activity.h"
 #include "main_window.h"
+
+namespace rtm { void request_redraw() { glfwPostEmptyEvent(); } }
 
 static void glfw_error_callback(int error, const char* description)
 {

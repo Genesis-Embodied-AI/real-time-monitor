@@ -3,6 +3,7 @@
 #include <implot.h>
 #include <implot_internal.h>
 
+#include "activity.h"
 #include "plot.h"
 
 namespace rtm
@@ -416,6 +417,7 @@ namespace rtm
                     {
                         result.push_back(serie->compute_statistics(x_min, x_max));
                     }
+                    rtm::request_redraw();
                     return result;
                 });
         }

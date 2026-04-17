@@ -20,10 +20,24 @@
 
 #include <argparse/argparse.hpp>
 #include <glob.h>
+#include <atomic>
+#include <chrono>
 #include <filesystem>
 #include <vector>
 
+#include "activity.h"
 #include "main_window.h"
+
+// A change in this counter between two loop iterations is the only signal
+// that distinguishes real input from a Wayland frame-callback wake.
+static std::atomic<uint64_t> g_activity_counter{0};
+
+static void mark_activity()
+{
+    g_activity_counter.fetch_add(1, std::memory_order_relaxed);
+}
+
+namespace rtm { void request_redraw() { mark_activity(); glfwPostEmptyEvent(); } }
 
 // [Win32] Our example includes a copy of glfw3.lib pre-compiled with VS2010 to maximize ease of testing and compatibility with old VS compilers.
 // To link with VS2010-era libraries, VS2015+ requires linking with legacy_stdio_definitions.lib, which we do using this pragma.
@@ -214,6 +228,20 @@ int main(int argc, char* argv[])
     style.FontScaleDpi = main_scale;        // Set initial font scale. (using io.ConfigDpiScaleFonts=true makes this unnecessary. We leave both here for documentation purpose)
     style.AntiAliasedLines = not hw_msaa;
 
+    // Must be registered before ImGui_ImplGlfw_InitForOpenGL — ImGui chains
+    // the previously-installed callback and invokes it first. ImGuiIO state
+    // is stale inside these lambdas; don't read from it here.
+    glfwSetMouseButtonCallback(window, [](GLFWwindow*, int, int, int)      { mark_activity(); });
+    glfwSetCursorPosCallback  (window, [](GLFWwindow*, double, double)     { mark_activity(); });
+    glfwSetScrollCallback     (window, [](GLFWwindow*, double, double)     { mark_activity(); });
+    glfwSetKeyCallback        (window, [](GLFWwindow*, int, int, int, int) { mark_activity(); });
+    glfwSetCharCallback       (window, [](GLFWwindow*, unsigned int)       { mark_activity(); });
+    glfwSetCursorEnterCallback(window, [](GLFWwindow*, int)                { mark_activity(); });
+    glfwSetWindowFocusCallback(window, [](GLFWwindow*, int)                { mark_activity(); });
+    // These aren't touched by ImGui, so they don't need the chain trick.
+    glfwSetFramebufferSizeCallback(window, [](GLFWwindow*, int, int)       { mark_activity(); });
+    glfwSetWindowRefreshCallback  (window, [](GLFWwindow*)                 { mark_activity(); });
+
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(window, true);
 #ifdef __EMSCRIPTEN__
@@ -244,18 +272,46 @@ int main(int argc, char* argv[])
     rtm::MainWindow main_window;
     main_window.load_dataset(inputs);
 
-    // Main loop
+    // On Wayland, every glfwSwapBuffers re-arms a compositor frame callback
+    // that wakes glfwWaitEvents regardless of its timeout — the only way to
+    // let the GPU idle is to stop swapping.
+    using clock = std::chrono::steady_clock;
+    constexpr auto RENDER_AFTER_ACTIVITY = std::chrono::milliseconds(250);
+    constexpr double IDLE_WAIT_SECONDS = 1.0;
+
+    auto     render_until        = clock::now() + RENDER_AFTER_ACTIVITY;
+    uint64_t last_activity_count = g_activity_counter.load(std::memory_order_relaxed);
+
     while (not glfwWindowShouldClose(window))
     {
-        // Poll and handle events (inputs, window resize, etc.)
-        // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-        // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
-        // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
-        // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-        glfwWaitEventsTimeout(1.0 / 30.0);
+        if (clock::now() < render_until)
+        {
+            glfwPollEvents();
+        }
+        else
+        {
+            glfwWaitEventsTimeout(IDLE_WAIT_SECONDS);
+        }
+
         if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0)
         {
             ImGui_ImplGlfw_Sleep(10);
+            render_until = clock::time_point::min();
+            // Must not touch last_activity_count: a bump that arrives while
+            // minimized has to survive to fire the counter-changed branch
+            // on the first iteration after restore.
+            continue;
+        }
+
+        uint64_t activity_count = g_activity_counter.load(std::memory_order_relaxed);
+        if (activity_count != last_activity_count)
+        {
+            render_until        = clock::now() + RENDER_AFTER_ACTIVITY;
+            last_activity_count = activity_count;
+        }
+
+        if (clock::now() >= render_until)
+        {
             continue;
         }
 
@@ -279,6 +335,14 @@ int main(int argc, char* argv[])
         main_window.draw();
 
         ImGui::End();
+
+        // NOT IsAnyItemHovered: the whole app is one full-screen ImGui
+        // window, so it's ~always true and would re-arm render_until every
+        // frame.
+        if (ImGui::IsAnyItemActive() or ImGui::GetIO().WantTextInput)
+        {
+            render_until = clock::now() + RENDER_AFTER_ACTIVITY;
+        }
 
         // Rendering
         ImGui::Render();
