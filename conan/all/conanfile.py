@@ -50,16 +50,16 @@ class RealTimeMonitorRecipe(ConanFile):
         if self.settings.compiler.get_safe("cppstd"):
             check_min_cppstd(self, 17)
 
-        if self.settings.os not in ["Linux"]:
+        if self.settings.os not in ["Linux", "Macos"]:
             raise ConanInvalidConfiguration(
                 f"{self.ref} is not supported on {self.settings.os}.")
 
-        if self.settings.compiler != "gcc":
-            raise ConanInvalidConfiguration(
-                f"{self.ref} is not supported on {self.settings.compiler}.")
-
-        if self.settings.compiler == 'gcc' and Version(self.settings.compiler.version) < "11":
-            raise ConanInvalidConfiguration("Building requires GCC >= 11")
+        if self.settings.os == "Linux":
+            if self.settings.compiler != "gcc":
+                raise ConanInvalidConfiguration(
+                    f"{self.ref} on Linux requires GCC.")
+            if Version(self.settings.compiler.version) < "11":
+                raise ConanInvalidConfiguration("Building requires GCC >= 11")
 
     def requirements(self):
         pass
