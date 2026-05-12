@@ -44,17 +44,20 @@ jobs:
         ctest --test-dir build --output-on-failure
 
     - name: Upload Build Artifact
-      if: matrix.os == 'ubuntu-latest' && matrix.build_type == 'Release'
+      if: matrix.build_type == 'Release'
       uses: actions/upload-artifact@v4
       with:
-        name: build-linux
+        name: build-${{ matrix.os }}
         path: build/
         retention-days: 1
 
   build-conan-package:
     needs: build
     name: Build Conan Package
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
 
     steps:
     - uses: actions/checkout@v4
@@ -66,7 +69,7 @@ jobs:
     - name: Download Build Artifacts
       uses: actions/download-artifact@v4
       with:
-        name: build-linux
+        name: build-${{ matrix.os }}
         path: build/
 
     - name: Determine version
@@ -83,11 +86,11 @@ jobs:
 
     - name: Export Conan package
       run: |
-        conan cache save "real-time-monitor/${{ env.PKG_VERSION }}:*" --file real-time-monitor-${{ env.PKG_VERSION }}-linux-x86_64.tgz
+        conan cache save "real-time-monitor/${{ env.PKG_VERSION }}:*" --file real-time-monitor-${{ env.PKG_VERSION }}-${{ matrix.os }}.tgz
 
     - name: Upload Conan package artifact
       uses: actions/upload-artifact@v4
       with:
-        name: conan-package
-        path: real-time-monitor-${{ env.PKG_VERSION }}-linux-x86_64.tgz
+        name: conan-package-${{ matrix.os }}
+        path: real-time-monitor-${{ env.PKG_VERSION }}-${{ matrix.os }}.tgz
         if-no-files-found: error
