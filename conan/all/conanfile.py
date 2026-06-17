@@ -1,7 +1,7 @@
 from conan import ConanFile
 from conan.errors import ConanInvalidConfiguration
 from conan.tools.build import check_min_cppstd
-from conan.tools.cmake import CMakeToolchain, CMake, cmake_layout
+from conan.tools.cmake import CMakeDeps, CMakeToolchain, CMake, cmake_layout
 from conan.tools.files import get, copy
 from conan.tools.scm import Version
 import os
@@ -22,7 +22,7 @@ class RealTimeMonitorRecipe(ConanFile):
     default_options = {"shared": False, "fPIC": True}
 
     # Sources are located in the same place as this recipe, copy them to the recipe
-    exports_sources = "CMakeLists.txt", "lib/*", "cmake/*", "py_bindings/*"
+    exports_sources = "CMakeLists.txt", "lib/*", "cmake/*", "tools/*", "py_bindings/*"
 
     def export_sources(self):
         # This method is used for local development to copy sources into the recipe
@@ -31,6 +31,7 @@ class RealTimeMonitorRecipe(ConanFile):
         copy(self, "CMakeLists.txt", src=root, dst=self.export_sources_folder)
         copy(self, "lib/*", src=root, dst=self.export_sources_folder)
         copy(self, "cmake/*", src=root, dst=self.export_sources_folder)
+        copy(self, "tools/*", src=root, dst=self.export_sources_folder)
         copy(self, "py_bindings/*", src=root, dst=self.export_sources_folder)
         copy(self, "LICENSE", src=root, dst=self.export_sources_folder)
 
@@ -62,13 +63,14 @@ class RealTimeMonitorRecipe(ConanFile):
                 raise ConanInvalidConfiguration("Building requires GCC >= 11")
 
     def requirements(self):
-        pass
-
+        self.requires("argparse/3.2", visible=False)
 
     def generate(self):
+        deps = CMakeDeps(self)
+        deps.generate()
         tc = CMakeToolchain(self)
         tc.cache_variables["BUILD_MONITOR"] = "OFF"
-        tc.cache_variables["BUILD_TOOLS"] = "OFF"
+        tc.cache_variables["BUILD_TOOLS"] = "ON"
         tc.cache_variables["BUILD_TESTS"] = "OFF"
         tc.generate()
 
@@ -78,6 +80,9 @@ class RealTimeMonitorRecipe(ConanFile):
         cmake.build()
 
     def package(self):
+        cmake = CMake(self)
+        cmake.install()
+
         src_folders = ["lib/include"]
         for folder in src_folders:
             copy(self, "*.h", os.path.join(self.source_folder, folder),
@@ -87,8 +92,17 @@ class RealTimeMonitorRecipe(ConanFile):
              os.path.join(self.package_folder, "lib"), keep_path=False)
         copy(self, "*.so", self.build_folder,
              os.path.join(self.package_folder, "lib"), keep_path=False)
+
+        copy(self, "real_time_monitor_recorder_target.cmake",
+             os.path.join(self.source_folder, "cmake"),
+             os.path.join(self.package_folder, "cmake"))
+
         copy(self, "LICENSE", self.source_folder,
              os.path.join(self.package_folder, "licenses"))
 
     def package_info(self):
         self.cpp_info.libs = ["rtm"]
+        self.cpp_info.bindirs = ["bin"]
+        self.cpp_info.set_property(
+            "cmake_build_modules",
+            ["cmake/real_time_monitor_recorder_target.cmake"])

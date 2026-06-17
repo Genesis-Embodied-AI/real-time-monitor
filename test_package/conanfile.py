@@ -24,3 +24,7 @@ class RealTimeMonitorTestConan(ConanFile):
         if can_run(self):
             cmd = os.path.join(self.cpp.build.bindir, "test_package")
             self.run(cmd, env="conanrun")
+            recorder = os.path.join(
+                self.dependencies["real-time-monitor"].package_folder,
+                "bin", "rtm_recorder")
+            self.run(f'"{recorder}" --help', env="conanrun")
