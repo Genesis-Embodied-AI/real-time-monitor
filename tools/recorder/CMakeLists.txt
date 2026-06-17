@@ -5,4 +5,6 @@ target_link_libraries(rtm_recorder PRIVATE rtm argparse::argparse)
 
 if (SKBUILD)
     install(TARGETS rtm_recorder DESTINATION ${SKBUILD_SCRIPTS_DIR})
+else()
+    install(TARGETS rtm_recorder RUNTIME DESTINATION bin)
 endif()
