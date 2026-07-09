@@ -61,14 +61,35 @@ target_include_directories(implot PUBLIC
 target_link_libraries(implot PUBLIC imgui::imgui glfw ${OS_SPECIFIC_LIBRARIES})
 target_compile_options(implot PRIVATE -Wno-conversion -Wno-cast-qual)
 
+# Embed the bundled fonts (assets/fonts/*.ttf) into a generated source file so
+# rtm_gui has no runtime font-file dependency (it ships as a packaged script).
+file(GLOB RTM_BUNDLED_FONTS CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/*.ttf"
+    "${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts/*.otf"
+)
+set(RTM_BUNDLED_FONTS_CC "${CMAKE_CURRENT_BINARY_DIR}/bundled_fonts.cc")
+add_custom_command(
+    OUTPUT  "${RTM_BUNDLED_FONTS_CC}"
+    COMMAND ${CMAKE_COMMAND}
+            -DOUTPUT=${RTM_BUNDLED_FONTS_CC}
+            "-DFONTS=${RTM_BUNDLED_FONTS}"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_fonts.cmake"
+    DEPENDS ${RTM_BUNDLED_FONTS}
+            "${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_fonts.cmake"
+    VERBATIM
+)
+
 set(MONITOR_SRCS
     ${OS_MAIN_SOURCE}
     ${CMAKE_CURRENT_SOURCE_DIR}/editor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/main_window.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/plot.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/serie.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/fonts.cc
+    ${RTM_BUNDLED_FONTS_CC}
     )
 add_executable(rtm_gui ${MONITOR_SRCS})
+target_include_directories(rtm_gui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(rtm_gui PRIVATE implot rtm argparse::argparse)
 
 if (SKBUILD)
