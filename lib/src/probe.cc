@@ -3,6 +3,8 @@
 #include <cstdio>
 
 #include "commands.h"
+#include "io/null.h"
+#include "io/posix/local_socket.h"
 #include "parser.h"
 #include "probe.h"
 #include "serializer.h"
@@ -103,5 +105,24 @@ namespace rtm
             io_->write(samples_.data(), samples_.size() * sizeof(decltype(samples_)::value_type));
             samples_.clear();
         }
+    }
+
+    std::error_code connect_probe(Probe& probe, std::string_view process,
+                                  std::string_view task_name, nanoseconds process_start_time,
+                                  nanoseconds task_period, int32_t task_priority,
+                                  std::string_view path)
+    {
+        std::unique_ptr<AbstractIO> io = std::make_unique<LocalSocket>(path);
+        auto const rc = io->open(access::Mode::READ_WRITE);
+        if (rc)
+        {
+            // A probe always has a sink, so a missing recorder costs the caller no branch.
+            io = std::make_unique<NullIO>();
+            io->open(access::Mode::READ_WRITE);
+        }
+
+        probe.init(process, task_name, process_start_time, task_period, task_priority,
+                   std::move(io));
+        return rc;
     }
 }

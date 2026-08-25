@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "rtm/io/io.h"
+#include "rtm/io/posix/local_socket.h"
 #include "rtm/os/time.h"
 
 namespace rtm
@@ -59,6 +60,14 @@ namespace rtm
 
         std::unique_ptr<AbstractIO> io_{};
     };
+
+    /// Initialize `probe` onto the recorder listening on `path`, or onto a discard sink when
+    /// nothing is listening: the probe is usable either way, so a caller needs no null check.
+    /// The connect error comes back for the caller to report -- this library has no logger.
+    std::error_code connect_probe(Probe& probe, std::string_view process,
+                                  std::string_view task_name, nanoseconds process_start_time,
+                                  nanoseconds task_period, int32_t task_priority,
+                                  std::string_view path = DEFAULT_LISTENING_PATH);
 }
 
 #endif
