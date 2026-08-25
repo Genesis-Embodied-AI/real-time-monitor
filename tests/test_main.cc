@@ -2,6 +2,7 @@
 
 bool test_file_sink();
 bool test_local_socket();
+bool test_io_factory();
 bool test_connect_probe();
 bool test_tcp();
 bool test_empty_data();
@@ -22,6 +23,7 @@ int main()
     {
         {"file_sink",                  test_file_sink},
         {"local_socket",               test_local_socket},
+        {"io_factory",                 test_io_factory},
         {"connect_probe",              test_connect_probe},
         {"tcp",                        test_tcp},
         {"empty_data",                 test_empty_data},
