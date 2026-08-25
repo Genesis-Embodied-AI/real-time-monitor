@@ -2,6 +2,7 @@
 #include <thread>
 
 #include "test_helpers.h"
+#include "rtm/probe_factory.h"
 #include "rtm/io/file.h"
 #include "rtm/io/null.h"
 #include "rtm/io/posix/tcp_socket.h"
@@ -89,25 +90,20 @@ bool test_local_socket()
 
 bool test_connect_probe()
 {
+    auto tmp_dir = fs::temp_directory_path() / "rtm_test_connect";
+    fs::remove_all(tmp_dir);
+    fs::create_directories(tmp_dir);
+    std::string sock_path = (tmp_dir / "recorder.sock").string();
+
     // No recorder on the path: the failure is reported and the probe is still usable.
     {
-        auto dead_path = fs::temp_directory_path() / "rtm_test_absent.sock";
-        fs::remove(dead_path);
-
         Probe probe;
-        auto rc = connect_probe(probe, "test_process", "test_task", START, 1ms, 42,
-                                dead_path.string());
-        CHECK(rc, "connect_probe() to an absent recorder should report an error");
+        auto rc = connect_probe(probe, "test_process", "test_task", START, 1ms, 42, sock_path);
+        CHECK(rc, "connecting to an absent recorder should report an error");
 
         probe.set_threshold(10ms);
         log_probe_samples(probe);
     }
-
-    // Recorder listening: the samples land in the .tick file.
-    auto tmp_dir = fs::temp_directory_path() / "rtm_test_connect";
-    fs::remove_all(tmp_dir);
-    fs::create_directories(tmp_dir);
-    std::string sock_path = (fs::temp_directory_path() / "rtm_test_connect.sock").string();
 
     Recorder recorder(tmp_dir.string());
     LocalListener listener(sock_path);
