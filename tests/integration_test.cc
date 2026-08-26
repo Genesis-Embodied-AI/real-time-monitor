@@ -2,6 +2,8 @@
 #include <thread>
 
 #include "test_helpers.h"
+#include "rtm/io/factory.h"
+#include "rtm/probe_factory.h"
 #include "rtm/io/file.h"
 #include "rtm/io/null.h"
 #include "rtm/io/posix/tcp_socket.h"
@@ -9,6 +11,8 @@
 namespace
 {
 constexpr uint16_t TCP_TEST_PORT = 19770;
+constexpr uint16_t TCP_UNBOUND_PORT = 19772;
+constexpr uint16_t UDP_TEST_PORT = 19773;
 }
 
 
@@ -80,6 +84,115 @@ bool test_local_socket()
 
     recorder_loop(recorder, listener, 2s);
     probe_thread.join();
+
+    bool ok = verify_tick_file(tmp_dir);
+    fs::remove_all(tmp_dir);
+    return ok;
+}
+
+
+bool test_io_factory()
+{
+    auto tmp_dir = fs::temp_directory_path() / "rtm_test_factory";
+    fs::remove_all(tmp_dir);
+    fs::create_directories(tmp_dir);
+
+    // The discard sink takes a whole stream with nowhere to put it.
+    {
+        auto io = make_null_io();
+        CHECK(not io->open(access::Mode::READ_WRITE), "cannot open the discard sink");
+        send_probe_data(std::move(io));
+    }
+
+    // The file sink writes a stream the parser reads back.
+    {
+        auto const tick_path = (tmp_dir / "factory.tick").string();
+        auto io = make_file_io(tick_path);
+        CHECK(not io->open(access::Mode::WRITE_ONLY | access::Mode::TRUNCATE),
+              "cannot open the file sink");
+        send_probe_data(std::move(io));
+    }
+    CHECK(verify_tick_file(tmp_dir), "file sink stream does not parse");
+
+    // A local socket dials the path it is given, so an absent recorder is reported from there
+    // and not from the default path.
+    {
+        auto const dead_path = (tmp_dir / "absent.sock").string();
+        auto io = make_local_socket_io(dead_path);
+        CHECK(io->open(access::Mode::READ_WRITE), "connecting to an absent recorder should fail");
+    }
+
+    // A TCP socket carries the host and port it is given: nothing listens on this one.
+    {
+        auto io = make_tcp_io("127.0.0.1", TCP_UNBOUND_PORT);
+        CHECK(io->open(access::Mode::READ_WRITE), "connecting to an unbound port should fail");
+    }
+
+    // The two UDP forms address each other: `bind_port` receives, `host` and `port` send.
+    {
+        auto receiver = make_udp_io("", 0, UDP_TEST_PORT);
+        CHECK(not receiver->open(access::Mode::READ_WRITE), "cannot bind the UDP receiver");
+
+        auto sender = make_udp_io("127.0.0.1", UDP_TEST_PORT);
+        CHECK(not sender->open(access::Mode::READ_WRITE), "cannot open the UDP sender");
+
+        constexpr int64_t payload_size = static_cast<int64_t>(sizeof(uint32_t));
+        uint32_t const sent = 0xA5A5A5A5;
+        CHECK(sender->write(&sent, payload_size) == payload_size, "short UDP write");
+
+        uint32_t received = 0;
+        CHECK(receiver->read(&received, payload_size) == payload_size, "short UDP read");
+        CHECK(received == sent, "UDP payload does not round-trip");
+    }
+
+    fs::remove_all(tmp_dir);
+    return true;
+}
+
+
+bool test_connect_probe()
+{
+    auto tmp_dir = fs::temp_directory_path() / "rtm_test_connect";
+    fs::remove_all(tmp_dir);
+    fs::create_directories(tmp_dir);
+    std::string sock_path = (tmp_dir / "recorder.sock").string();
+
+    // No recorder on the path: the failure is reported and the probe is still usable.
+    {
+        Probe probe;
+        auto rc = connect_probe(probe, "test_process", "test_task", START, 1ms, 42, sock_path);
+        CHECK(rc, "connecting to an absent recorder should report an error");
+
+        probe.set_threshold(10ms);
+        log_probe_samples(probe);
+    }
+
+    Recorder recorder(tmp_dir.string());
+    LocalListener listener(sock_path);
+    {
+        auto rc = listener.listen(1);
+        CHECK(not rc, "local listen() failed");
+    }
+
+    bool connected = false;
+    std::thread probe_thread([&sock_path, &connected]()
+    {
+        sleep(50ms);
+        Probe probe;
+        auto rc = connect_probe(probe, "test_process", "test_task", START, 1ms, 42, sock_path);
+        if (rc)
+        {
+            printf("  connect_probe() failed: %s\n", rc.message().c_str());
+            return;
+        }
+        connected = true;
+        log_probe_samples(probe);
+    });
+
+    recorder_loop(recorder, listener, 2s);
+    probe_thread.join();
+
+    CHECK(connected, "connect_probe() failed against a live listener");
 
     bool ok = verify_tick_file(tmp_dir);
     fs::remove_all(tmp_dir);

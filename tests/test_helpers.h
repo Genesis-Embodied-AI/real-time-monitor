@@ -56,11 +56,9 @@ inline int run_tests(TestCase* tests, int count)
     return failures == 0 ? 0 : 1;
 }
 
-inline void send_probe_data(std::unique_ptr<AbstractIO> io)
+// The sample train verify_tick_file() expects.
+inline void log_probe_samples(Probe& probe)
 {
-    Probe probe;
-    probe.init("test_process", "test_task", START, 1ms, 42, std::move(io));
-
     for (int i = 0; i < NUM_SAMPLES; ++i)
     {
         auto t = START + 20ms + nanoseconds(i * 1'000'000);
@@ -68,6 +66,13 @@ inline void send_probe_data(std::unique_ptr<AbstractIO> io)
         probe.log(t + 100us);
     }
     probe.flush();
+}
+
+inline void send_probe_data(std::unique_ptr<AbstractIO> io)
+{
+    Probe probe;
+    probe.init("test_process", "test_task", START, 1ms, 42, std::move(io));
+    log_probe_samples(probe);
 }
 
 inline void recorder_loop(Recorder& recorder, AbstractListener& listener, nanoseconds timeout)

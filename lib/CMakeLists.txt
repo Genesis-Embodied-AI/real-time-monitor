@@ -2,6 +2,7 @@ set(LIB_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/data.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/error.cc
 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/io/factory.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/io/io.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/io/posix/file.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/io/posix/socket.cc
@@ -14,6 +15,7 @@ set(LIB_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/parser_data.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/parser_metadata.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/probe.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/probe_factory.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/recorder.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/serializer.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/src/os/time.cc
