@@ -8,6 +8,7 @@
 
 #include "rtm/parser.h"
 #include "rtm/probe.h"
+#include "rtm/probe_factory.h"
 #include "rtm/recorder.h"
 #include "rtm/io/file.h"
 #include "rtm/io/posix/local_socket.h"
@@ -41,20 +42,16 @@ namespace rtm
                             uint32_t period_ms, int32_t priority, nanoseconds start,
                             std::string_view listening_path)
                 {
-                    auto io = std::make_unique<rtm::LocalSocket>(listening_path);
-                    auto rc = io->open(rtm::access::Mode::READ_WRITE);
-                    if (rc)
-                    {
-                        throw std::runtime_error("Cannot connect to the recorder");
-                    }
-
-                    self.init(process, task,
-                        start, milliseconds{period_ms}, priority,
-                        std::move(io));
+                    auto const rc = connect_probe(self, process, task, start,
+                                                  milliseconds{period_ms}, priority,
+                                                  listening_path);
+                    return not rc;
                 }, "process"_a, "task"_a,
                    "period_ms"_a, "priority"_a,
                    "start"_a = start_time(),
-                   "listening_path"_a = DEFAULT_LISTENING_PATH)
+                   "listening_path"_a = DEFAULT_LISTENING_PATH,
+                   "False when no recorder was listening: the probe then discards, so "
+                   "logging stays safe and needs no guard.")
             .def("init_tcp", [](Probe& self, char const* process, char const* task,
                                 uint32_t period_ms, int32_t priority,
                                 std::string_view host, uint16_t port,
@@ -86,12 +83,14 @@ namespace rtm
                 {
                     self.log();
                 })
-            .def("set_threshold", [](Probe& self, uint64_t threshold_ns)
-                {
-                    self.set_threshold(nanoseconds{threshold_ns});
-                }, "threshold_ns"_a)
-            .def("__enter__", [](Probe& self) -> Probe& { self.log(); return self; })
-            .def("__exit__", [](Probe& self, nb::handle, nb::handle, nb::handle) { self.log(); });
+            .def("set_threshold", &Probe::set_threshold, "threshold"_a,
+                 "Arm the recorder's blackbox for this probe: it then keeps only the window "
+                 "around a cycle whose start-to-start interval exceeds `threshold`, a "
+                 "timedelta or a number of seconds.")
+            .def("__enter__", [](Probe& self) -> Probe& { self.log(); return self; },
+                 nb::rv_policy::reference_internal)
+            .def("__exit__", [](Probe& self, nb::handle, nb::handle, nb::handle) { self.log(); },
+                 nb::arg().none(), nb::arg().none(), nb::arg().none());
 
         nb::bind_vector<std::vector<float>>(m, "FVector");
         nb::bind_vector<std::vector<nanoseconds>>(m, "nsVector");
